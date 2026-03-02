@@ -1,53 +1,31 @@
+// backend/src/index.ts
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
-import { z } from "zod";
-import * as bcrypt from "bcrypt";
-import * as jwt from "jsonwebtoken";
-// สมมติว่ามีการ import PrismaClient เรียบร้อยแล้ว
+import authRoutes from "./routes/auth"; // Now this will work! ✅
 
-const app = new Hono();
-const JWT_SECRET = process.env.JWT_SECRET || "super-secret-key-for-dev";
+const app = new Hono().basePath("/api");
 
 // Middleware
 app.use("*", cors());
 app.use("*", logger());
 
-// Schema สำหรับ Input Validation (Security)
-const loginSchema = z.object({
-  phone: z.string().min(9).max(10),
-  password: z.string().min(6),
-});
+// --- ROUTES ---
 
-// API: Authentication - POST /api/auth/login
-app.post("/api/auth/login", async (c) => {
-  try {
-    const body = await c.req.json();
-    const data = loginSchema.parse(body); // Validate Input
+// 1. เส้นทางหลักสำหรับระบบ Authentication
+app.route("/auth", authRoutes);
 
-    // TODO: Query user from Prisma using data.phone
-    // const user = await prisma.user.findUnique({ where: { phone: data.phone } });
-    
-    // จำลองการตรวจสอบรหัสผ่าน
-    // const isMatch = await bcrypt.compare(data.password, user.password);
-    
-    // สร้าง Token
-    const token = jwt.sign({ phone: data.phone, role: "MANAGER" }, JWT_SECRET, { expiresIn: "1d" });
+// 🟠 [เพื่อนๆ] ถ้าจะสร้าง API ใหม่ (เช่น Orders) ให้ทำตามนี้:
+// 1. สร้างไฟล์ src/routes/orders.ts
+// 2. Import เข้ามา: import orderRoutes from "./routes/orders";
+// 3. ลงทะเบียนต่อจากบรรทัดนี้: app.route("/orders", orderRoutes);
 
-    return c.json({ message: "Login success", token });
-  } catch (error) {
-    return c.json({ error: "Invalid input or credentials" }, 400);
-  }
-});
 
-// API: สร้างคำสั่งงาน - POST /api/orders
-app.post("/api/orders", async (c) => {
-    // โครงสร้างทิ้งไว้ให้เพื่อนร่วมทีมมาเขียนต่อ
-    return c.json({ message: "Order creation endpoint ready for development" });
-});
+// --- SERVER CONFIG ---
+const port = 3000;
+console.log(`🚀 Backend is running on port ${port}`);
 
 export default {
-  port: 3000,
+  port: port,
   fetch: app.fetch,
 };
-console.log(`🚀 Backend is running on port 3000`);

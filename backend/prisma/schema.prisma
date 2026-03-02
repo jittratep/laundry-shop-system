@@ -50,3 +50,7 @@ model Payment {
   order         Order    @relation(fields: [orderId], references: [id])
   createdAt     DateTime @default(now())
 }
+
+// 🟡 [เพื่อนๆ] ถ้าจะเพิ่มตารางใหม่ (Table) เช่น Order, LaundryItem 
+// ให้มานิยาม Model ต่อจากตรงนี้ครับ
+// อย่าลืมรัน `bunx prisma db push` หลังแก้เสร็จนะ!
