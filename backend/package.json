@@ -1,20 +1,24 @@
 {
   "name": "backend",
   "private": true,
-  "devDependencies": {
-    "@types/bcrypt": "^6.0.0",
-    "@types/bun": "latest",
-    "@types/jsonwebtoken": "^9.0.10",
-    "prisma": "^7.4.2"
+  "scripts": {
+    "dev": "bun run --hot src/index.ts",
+    "db:push": "bunx prisma db push",
+    "db:seed": "bun run src/seed.ts",
+    "db:studio": "bunx prisma studio",
+    "generate": "bunx prisma generate"
   },
-  "peerDependencies": {
-    "typescript": "^5"
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/bun": "latest",
+    "@types/jsonwebtoken": "^9.0.8",
+    "prisma": "^5.11.0"
   },
   "dependencies": {
-    "@prisma/client": "^7.4.2",
-    "bcrypt": "^6.0.0",
-    "hono": "^4.12.3",
-    "jsonwebtoken": "^9.0.3",
-    "zod": "^4.3.6"
+    "@prisma/client": "^5.11.0",
+    "bcrypt": "^5.1.1",
+    "hono": "^4.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "zod": "^3.22.4"
   }
 }
