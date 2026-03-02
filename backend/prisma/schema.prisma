@@ -1,11 +1,52 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+
+model User {
+  id        String   @id @default(uuid())
+  phone     String   @unique
+  password  String   
+  name      String
+  role      String   @default("CUSTOMER") // แก้เป็น String เรียบร้อย
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  phone     String   @unique
+  name      String
+  address   String?
+  points    Int      @default(0) // แต้มสะสม
+  orders    Order[]
+  createdAt DateTime @default(now())
+}
+
+model Order {
+  id            String   @id @default(uuid())
+  orderNumber   String   @unique // เช่น ORD20260212001
+  customerId    String
+  status        String   @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
+  totalAmount   Float
+  notes         String?
+  customer      Customer @relation(fields: [customerId], references: [id])
+  payment       Payment?
+  createdAt     DateTime @default(now())
+}
+
+model Payment {
+  id            String   @id @default(uuid())
+  orderId       String   @unique
+  amount        Float
+  method        String   // CASH, QR, CREDIT
+  status        String   @default("PAID") // PENDING, PAID
+  order         Order    @relation(fields: [orderId], references: [id])
+  createdAt     DateTime @default(now())
 }
