@@ -4,7 +4,6 @@ node_modules/
 
 # Bun
 .bun/
-bun.lockb
 
 # Environment variables
 .env
@@ -26,8 +25,6 @@ out/
 prisma/dev.db
 prisma/dev.db-journal
 
-# Prisma
-prisma/migrations/
 
 # IDE
 .vscode/
