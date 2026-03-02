@@ -1,22 +1,9 @@
 {
-  "name": "laundry-shop-system-(template)",
-  "module": "index.ts",
-  "type": "module",
-  "private": true,
-  "devDependencies": {
-    "@types/bcrypt": "^6.0.0",
-    "@types/bun": "latest",
-    "@types/jsonwebtoken": "^9.0.10",
-    "prisma": "^7.4.2"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
-  },
-  "dependencies": {
-    "@prisma/client": "^7.4.2",
-    "bcrypt": "^6.0.0",
-    "hono": "^4.12.3",
-    "jsonwebtoken": "^9.0.3",
-    "zod": "^4.3.6"
+  "name": "laundry-shop-system",
+  "workspaces": ["frontend", "backend"],
+  "scripts": {
+    "dev": "bun run --filter \"*\" dev",
+    "dev:frontend": "bun run --filter frontend dev",
+    "dev:backend": "bun run --filter backend dev"
   }
 }
