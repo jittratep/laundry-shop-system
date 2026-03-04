@@ -87,7 +87,7 @@ export default function CustomerPage() {
           class={`px-5 py-2 rounded-full text-sm font-semibold transition-colors ${
             activeTab() === "order" 
               ? "bg-white border border-gray-200 text-gray-800 shadow-sm" 
-              : "bg-blue-600 text-white shadow-md hover:bg-blue-700"
+              : "bg-gray-900 text-white shadow-md hover:bg-gray-900"
           }`}
         >
           🧺 สร้างออเดอร์

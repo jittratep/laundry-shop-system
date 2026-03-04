@@ -1,17 +1,30 @@
 // frontend/src/app/components/StaffLayout.tsx
-import Sidebar from "./Sidebar";
+import { useNavigate } from "@solidjs/router";
+import { onMount } from "solid-js";
+import Sidebar from "./Sidebar"; // เปลี่ยนรูปร่างเป็น Topbar แล้ว แต่ยังใช้ชื่อเดิม
 
-// props.children คือเนื้อหาของแต่ละหน้า (เช่น หน้า Dashboard, หน้า Order) ที่จะถูกโยนเข้ามาตรงกลาง
 export default function StaffLayout(props: { children?: any }) {
+  const navigate = useNavigate();
+
+  onMount(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/", { replace: true });
+    }
+  });
+
   return (
-    <div class="flex min-h-screen bg-gray-50">
-      {/* เมนูด้านซ้าย */}
+    // 🟢 เปลี่ยนเป็น flex-col (เรียงบนลงล่าง) แทนของเดิมที่เรียงซ้ายไปขวา
+    <div class="min-h-screen bg-gray-50 flex flex-col">
+      
+      {/* เมนูนำทางด้านบน */}
       <Sidebar />
       
-      {/* พื้นที่เนื้อหาด้านขวา (เว้นระยะซ้ายไว้ 64 ตามความกว้าง Sidebar) */}
-      <main class="flex-1 ml-64 p-8">
+      {/* 🟢 พื้นที่เนื้อหาหลัก (เอา ml-64 ออกแล้ว) */}
+      <main class="flex-1 p-4 md:p-8">
         {props.children}
       </main>
+      
     </div>
   );
 }
