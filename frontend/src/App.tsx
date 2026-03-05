@@ -8,6 +8,7 @@ import OrderManagementPage from "./app/pages/OrderManagementPage";
 import CustomerPage from "./app/pages/CustomerPage";
 import QueuePage from "./app/pages/QueuePage";
 import PaymentPage from "./app/pages/PaymentPage";
+import ProfilePage from "./app/pages/ProfilePage";
 
 // นำเข้า Layout ที่เราเพิ่งสร้าง
 import StaffLayout from "./app/components/StaffLayout";
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="/customers" component={CustomerPage} />
         <Route path="/queue" component={QueuePage} />
         <Route path="/payment" component={PaymentPage} />
+        <Route path="/profile" component={ProfilePage} />
         
         {/* [เพื่อนคนอื่น] มาต่อ Route ของตัวเองได้ที่นี่ */}
         {/* 🟢 [เพื่อนๆ] เพิ่ม Route สำหรับหน้าใหม่ๆ ต่อจากบรรทัดนี้ได้เลยครับ */}
