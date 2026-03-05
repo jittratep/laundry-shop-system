@@ -54,3 +54,5 @@ coverage/
 tmp/
 temp/
 .temp/
+BEST_PRACTICES.md
+ARCHITECTURE.md
