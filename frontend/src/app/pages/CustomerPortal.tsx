@@ -130,7 +130,7 @@ export default function CustomerPortal() {
     <div class="min-h-screen bg-gray-50 pb-12">
       
       {/* Mobile-first Header (Gradient) */}
-      <div class="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6 pt-10 pb-16">
+      <div class="bg-linear-to-br from-blue-600 to-blue-800 text-white p-6 pt-10 pb-16">
         <div class="container mx-auto max-w-4xl">
           <div class="flex items-start justify-between mb-4">
             <div class="flex-1">
@@ -342,7 +342,7 @@ export default function CustomerPortal() {
         </Show>
 
         {/* Loyalty Program Card */}
-        <div class="mt-8 bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-100 rounded-2xl overflow-hidden shadow-sm">
+        <div class="mt-8 bg-linear-to-br from-purple-50 to-blue-50 border border-purple-100 rounded-2xl overflow-hidden shadow-sm">
           <div class="p-6">
             <h2 class="flex items-center gap-2 text-purple-900 font-bold text-lg mb-1">
               <span class="bg-purple-100 p-1.5 rounded-lg"><IconAward /></span>
@@ -357,7 +357,7 @@ export default function CustomerPortal() {
                   <span class="text-purple-700">{customer.loyaltyPoints} / 1000</span>
                 </div>
                 <div class="w-full bg-white rounded-full h-3 border border-purple-100">
-                  <div class="bg-gradient-to-r from-purple-500 to-blue-500 h-3 rounded-full transition-all" style={{ width: `${(customer.loyaltyPoints / 1000) * 100}%` }}></div>
+                  <div class="bg-linear-to-br from-purple-500 to-blue-500 h-3 rounded-full transition-all" style={{ width: `${(customer.loyaltyPoints / 1000) * 100}%` }}></div>
                 </div>
                 <p class="text-xs text-gray-500 mt-2 font-semibold">
                   เหลืออีก {1000 - customer.loyaltyPoints} คะแนน เพื่อเลื่อนระดับเป็นระดับถัดไป!
