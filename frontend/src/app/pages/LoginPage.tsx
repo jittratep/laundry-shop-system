@@ -1,7 +1,6 @@
 import { createSignal } from "solid-js";
-import { useNavigate } from "@solidjs/router";
-// 1. เอาคอมเมนต์ออก เพื่อให้ใช้งาน api.ts ได้
-import { api } from "../utils/api"; 
+import { useNavigate, A } from "@solidjs/router";
+import { api } from "../utils/api";
 
 export default function LoginPage() {
   const [phone, setPhone] = createSignal("");
@@ -12,11 +11,10 @@ export default function LoginPage() {
   const handleLogin = async (e: Event) => {
     e.preventDefault();
     try {
-      // 2. ใช้โค้ดของจริงสำหรับยิง API
       const data = await api.login(phone(), password());
-      localStorage.setItem("token", data.token); 
-      alert("เข้าสู่ระบบสำเร็จ! Token ได้รับแล้ว"); // เติม Alert ให้เห็นภาพชัดๆ
-      navigate("/dashboard"); 
+      localStorage.setItem("token", data.token);
+      alert("เข้าสู่ระบบสำเร็จ! Token ได้รับแล้ว");
+      navigate("/dashboard");
     } catch (err: any) {
       setError(err.message || "เบอร์โทรศัพท์หรือรหัสผ่านไม่ถูกต้อง");
     }
@@ -25,11 +23,21 @@ export default function LoginPage() {
   return (
     <div class="min-h-screen flex items-center justify-center bg-gray-100">
       <div class="bg-white p-8 rounded-lg shadow-md w-96">
-        <h1 class="text-2xl font-bold mb-6 text-center text-blue-600">Laundry Shop</h1>
-        {error() && <div class="text-red-500 text-sm mb-4 text-center bg-red-50 p-2 rounded">{error()}</div>}
+        <h1 class="text-2xl font-bold mb-6 text-center text-blue-600">
+          Laundry Shop
+        </h1>
+
+        {error() && (
+          <div class="text-red-500 text-sm mb-4 text-center bg-red-50 p-2 rounded">
+            {error()}
+          </div>
+        )}
+
         <form onSubmit={handleLogin} class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700">เบอร์โทรศัพท์</label>
+            <label class="block text-sm font-medium text-gray-700">
+              เบอร์โทรศัพท์
+            </label>
             <input
               type="tel"
               value={phone()}
@@ -38,8 +46,11 @@ export default function LoginPage() {
               required
             />
           </div>
+
           <div>
-            <label class="block text-sm font-medium text-gray-700">รหัสผ่าน</label>
+            <label class="block text-sm font-medium text-gray-700">
+              รหัสผ่าน
+            </label>
             <input
               type="password"
               value={password()}
@@ -48,10 +59,22 @@ export default function LoginPage() {
               required
             />
           </div>
-          <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors">
+
+          <button
+            type="submit"
+            class="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors"
+          >
             เข้าสู่ระบบ
           </button>
         </form>
+
+        {/* 🔥 ปุ่มสมัครสมาชิก (เพิ่มเรียบร้อย) */}
+        <p class="text-sm text-center mt-4">
+          ยังไม่มีบัญชี?{" "}
+          <A href="/register" class="text-blue-600 hover:underline">
+            สมัครสมาชิก
+          </A>
+        </p>
       </div>
     </div>
   );

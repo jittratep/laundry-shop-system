@@ -15,7 +15,7 @@ import StaffLayout from "./app/components/StaffLayout";
 
 // [เพื่อนๆ] นำเข้า (Import) หน้า Page ใหม่ๆ ตรงนี้ครับ
 // import DashboardPage from "./app/pages/DashboardPage"; 
-
+import Register from "./Register";
 
 export default function App() {
   return (
@@ -33,9 +33,10 @@ export default function App() {
         <Route path="/queue" component={QueuePage} />
         <Route path="/payment" component={PaymentPage} />
         <Route path="/profile" component={ProfilePage} />
-        
+        <Route path="/register" component={Register} />
         {/* [เพื่อนคนอื่น] มาต่อ Route ของตัวเองได้ที่นี่ */}
         {/* 🟢 [เพื่อนๆ] เพิ่ม Route สำหรับหน้าใหม่ๆ ต่อจากบรรทัดนี้ได้เลยครับ */}
+        <Route path="/register" component={Register} />
         {/* ตัวอย่าง: <Route path="/dashboard" component={DashboardPage} /> */}
       </Route>
     </Router>
