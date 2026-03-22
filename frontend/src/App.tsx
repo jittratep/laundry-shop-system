@@ -26,6 +26,9 @@ export default function App() {
       {/* หน้าแรกสุด (Default Route) */}
       <Route path="/" component={LoginPage} />
 
+      {/*เพิ่ม Route @MatrixTurtle Frontend (Customer Interface) & QA */}
+      <Route path="/customer-portal" component={CustomerPortal} />
+
       {/* 2. หน้าของ Staff ทั้งหมด ให้ครอบด้วย StaffLayout */}
       <Route path="/" component={StaffLayout}>
 
@@ -37,8 +40,6 @@ export default function App() {
         <Route path="/payment" component={PaymentPage} />
         <Route path="/profile" component={ProfilePage} />
         
-        {/*เพิ่ม Route @MatrixTurtle Frontend (Customer Interface) & QA */}
-        <Route path="/customer-portal" component={CustomerPortal} />
 
         {/* [เพื่อนคนอื่น] มาต่อ Route ของตัวเองได้ที่นี่ */}
         {/* 🟢 [เพื่อนๆ] เพิ่ม Route สำหรับหน้าใหม่ๆ ต่อจากบรรทัดนี้ได้เลยครับ */}

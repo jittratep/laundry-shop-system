@@ -7,48 +7,69 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
+// ------------------------------------------------------
+// 1. ตารางผู้ใช้งานระบบ (พนักงาน / ผู้จัดการ)
+// ------------------------------------------------------
 model User {
   id        String   @id @default(uuid())
-  phone     String   @unique
+  email     String   @unique // 🟢 เพิ่ม Email เพราะหน้า Login พนักงานใช้อีเมล
+  phone     String?  @unique // 🟢 เพิ่มเบอร์โทร (พนักงานอาจจะผูกเบอร์ไว้ดูในหน้า Profile)
   password  String   
   name      String
-  role      String   @default("CUSTOMER") // แก้เป็น String เรียบร้อย
+  role      String   @default("front-staff") // 🟢 Role: manager, front-staff, laundry-staff
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
+// ------------------------------------------------------
+// 2. ตารางลูกค้า (Customer)
+// ------------------------------------------------------
 model Customer {
   id        String   @id @default(uuid())
-  phone     String   @unique
+  phone     String   @unique // 🟢 ลูกค้าใช้เบอร์โทรในการ Login
+  email     String?  @unique // 🟢 เพิ่ม Email (อิงจากฟอร์มลงทะเบียนลูกค้าใหม่)
+  password  String?  // 🟢 เพิ่ม Password ให้ลูกค้าล็อกอิน (ตั้งเป็น Optional (?) เผื่อลูกค้าเข้าด้วย OTP อย่างเดียว)
   name      String
   address   String?
   points    Int      @default(0) // แต้มสะสม
   orders    Order[]
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
+// ------------------------------------------------------
+// 3. ตารางออเดอร์ (Order)
+// ------------------------------------------------------
 model Order {
   id            String   @id @default(uuid())
   orderNumber   String   @unique // เช่น ORD20260212001
   customerId    String
-  status        String   @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
+  status        String   @default("pending") // pending, in-progress, washing, drying, ready, completed
   totalAmount   Float
   notes         String?
+  
   customer      Customer @relation(fields: [customerId], references: [id])
   payment       Payment?
+  
   createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
+// ------------------------------------------------------
+// 4. ตารางการชำระเงิน (Payment)
+// ------------------------------------------------------
 model Payment {
-  id            String   @id @default(uuid())
-  orderId       String   @unique
-  amount        Float
-  method        String   // CASH, QR, CREDIT
-  status        String   @default("PAID") // PENDING, PAID
-  order         Order    @relation(fields: [orderId], references: [id])
-  createdAt     DateTime @default(now())
+  id          String   @id @default(uuid())
+  orderId     String   @unique
+  amount      Float
+  method      String   // cash, promptpay, credit
+  status      String   @default("paid") // pending, paid
+  
+  order       Order    @relation(fields: [orderId], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 // 🟡 [เพื่อนๆ] ถ้าจะเพิ่มตารางใหม่ (Table) เช่น Order, LaundryItem 
