@@ -1,6 +1,7 @@
 // frontend/src/app/pages/LoginPage.tsx
 import { createSignal, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
+import { api } from "../utils/api";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -12,41 +13,45 @@ export default function LoginPage() {
   const [phone, setPhone] = createSignal("");
 
 // --- Handlers ---
-  const handleStaffLogin = (e: Event) => {
+  const handleStaffLogin = async (e: Event) => {
     e.preventDefault();
 
-    // 🟢 เพิ่มการตรวจสอบอีเมลและรหัสผ่านสำหรับพนักงาน
-    if (email() === "staff@laundryshop.com" && password() === "123456") {
-      localStorage.setItem("userRole", "front-staff");
-      localStorage.setItem("userName", "พนักงานหน้าร้าน (Jane)");
-      localStorage.setItem("token", "dummy-token-staff"); 
+    try {
+      // 1. เรียก API ยิงไปหา Hono Backend
+      const response = await api.loginStaff(email(), password());
+      
+      // 2. ถ้าสำเร็จ เซฟข้อมูลจริงที่ได้จาก Database ลง LocalStorage
+      localStorage.setItem("userRole", response.role);
+      localStorage.setItem("userName", response.name);
+      localStorage.setItem("token", response.token); 
+      
+      // 3. พาไปหน้า Dashboard
       navigate("/dashboard", { replace: true });
-    } 
-    else if (email() === "manager@laundryshop.com" && password() === "123456") {
-      localStorage.setItem("userRole", "manager");
-      localStorage.setItem("userName", "ผู้จัดการร้าน (John)");
-      localStorage.setItem("token", "dummy-token-manager"); 
-      navigate("/dashboard", { replace: true });
-    } 
-    else {
-      // 🔴 ถ้ากรอกผิด ให้แจ้งเตือนและไม่ให้เข้าสู่ระบบ
-      alert("อีเมล หรือ รหัสผ่านไม่ถูกต้อง!");
+      
+    } catch (error: any) {
+      // 4. ถ้าผิดพลาด (เช่น รหัสผิด) แจ้งเตือนข้อความที่ส่งมาจาก Backend
+      alert(error.message);
     }
   };
 
-  const handleCustomerLogin = (e: Event) => {
+  const handleCustomerLogin = async (e: Event) => {
     e.preventDefault();
 
-    // 🟢 เพิ่มการตรวจสอบเบอร์โทรและรหัสผ่านสำหรับลูกค้า
-    if (phone() === "0891234567" && password() === "123456") {
-      localStorage.setItem("userRole", "customer");
-      localStorage.setItem("userName", "คุณสมหญิง");
-      localStorage.setItem("token", "dummy-token-customer");
+    try {
+      // 1. เรียก API ยิงไปหา Hono Backend
+      const response = await api.loginCustomer(phone(), password());
+      
+      // 2. ถ้าสำเร็จ เซฟข้อมูลจริง
+      localStorage.setItem("userRole", response.role);
+      localStorage.setItem("userName", response.name);
+      localStorage.setItem("token", response.token);
+      
+      // 3. พาไปหน้า Customer Portal
       navigate("/customer-portal", { replace: true }); 
-    } 
-    else {
-      // 🔴 ถ้ากรอกผิด ให้แจ้งเตือนและไม่ให้เข้าสู่ระบบ
-      alert("เบอร์โทรศัพท์ หรือ รหัสผ่าน/OTP ไม่ถูกต้อง!");
+      
+    } catch (error: any) {
+      // 4. ถ้าผิดพลาด แจ้งเตือนข้อความที่ส่งมาจาก Backend
+      alert(error.message);
     }
   };
 
