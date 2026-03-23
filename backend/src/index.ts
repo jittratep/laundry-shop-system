@@ -2,7 +2,8 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
-import authRoutes from "./routes/auth"; // Now this will work! ✅
+import authRoutes from "./routes/auth";
+import profileRoutes from "./routes/profile"; // Now this will work! ✅
 
 const app = new Hono().basePath("/api");
 
@@ -14,7 +15,7 @@ app.use("*", logger());
 
 // 1. เส้นทางหลักสำหรับระบบ Authentication
 app.route("/auth", authRoutes);
-
+app.route("/profile", profileRoutes);
 // 🟠 [เพื่อนๆ] ถ้าจะสร้าง API ใหม่ (เช่น Orders) ให้ทำตามนี้:
 // 1. สร้างไฟล์ src/routes/orders.ts
 // 2. Import เข้ามา: import orderRoutes from "./routes/orders";

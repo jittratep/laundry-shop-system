@@ -40,7 +40,25 @@ async function main() {
   });
 
   // ------------------------------------------------------
-  // 3. สร้างลูกค้า: สำหรับทดสอบระบบ Customer Portal
+  // 3. สร้างพนักงาน: พนักงานซักรีด (Laundry Staff)
+  // ------------------------------------------------------
+  const laundrystaff = await prisma.user.upsert({
+    where: { email: "laundrystaff@laundryshop.com" },
+    update: {
+      name: "พนักงานซักรีด (สมชาย)", // 🟢 บังคับให้อัปเดตชื่อใหม่
+      role: "laundry-staff",        // 🟢 บังคับให้อัปเดตตำแหน่งใหม่ให้ถูกต้อง
+    },
+    create: {
+      email: "laundrystaff@laundryshop.com",
+      phone: "0833333333",
+      password: hashedPassword,
+      name: "พนักงานซักรีด (สมชาย)",
+      role: "laundry-staff",
+    },
+  });
+
+  // ------------------------------------------------------
+  // 4. สร้างลูกค้า: สำหรับทดสอบระบบ Customer Portal
   // ------------------------------------------------------
   const customer = await prisma.customer.upsert({
     where: { phone: "0891234567" }, // 🟢 ลูกค้าใช้เบอร์โทร (ตรงกับ Placeholder หน้า Login ลูกค้า)
@@ -58,7 +76,10 @@ async function main() {
   console.log("✅ Seed ข้อมูลสำเร็จเรียบร้อยแล้ว!");
   console.log(`👨‍💼 ผู้จัดการ: ${manager.email} | Pass: 123456`);
   console.log(`👩‍💼 พนักงาน: ${staff.email} | Pass: 123456`);
+  console.log(`🛍️ พนักงานซักรีด: ${laundrystaff.email} | Pass: 123456`);
   console.log(`🛍️ ลูกค้า: ${customer.phone} | Pass: 123456`);
+  
+
 }
 
 main()
