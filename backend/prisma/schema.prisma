@@ -42,18 +42,25 @@ model Customer {
 // 3. ตารางออเดอร์ (Order)
 // ------------------------------------------------------
 model Order {
-  id            String   @id @default(uuid())
-  orderNumber   String   @unique // เช่น ORD20260212001
-  customerId    String
-  status        String   @default("pending") // pending, in-progress, washing, drying, ready, completed
-  totalAmount   Float
-  notes         String?
+  id                  String      @id @default(uuid())
+  orderNumber         String      @unique 
+  customerId          String
+  status              String      @default("pending") 
+  totalAmount         Float
+  notes               String?
   
-  customer      Customer @relation(fields: [customerId], references: [id])
-  payment       Payment?
+  // 🟢 สิ่งที่เพิ่มเข้ามา: สถานะและช่องทางการชำระเงิน
+  paymentStatus       String      @default("unpaid")
+  paymentMethod       String?
   
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  customer            Customer    @relation(fields: [customerId], references: [id])
+  payment             Payment?
+  
+  items               OrderItem[] 
+  estimatedCompletion DateTime?   
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }
 
 // ------------------------------------------------------
@@ -70,6 +77,20 @@ model Payment {
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// ------------------------------------------------------
+// 5. ตารางรายการผ้า (Item ในแต่ละออเดอร์)
+// ------------------------------------------------------
+model OrderItem {
+  id           String  @id @default(uuid())
+  orderId      String
+  order        Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  type         String  // ประเภทผ้า เช่น เสื้อเชิ้ต, กางเกงยีนส์
+  service      String  // บริการ เช่น ซักพับ, ซักรีด
+  quantity     Int     // จำนวน
+  pricePerItem Float   // ราคาต่อชิ้น
 }
 
 // 🟡 [เพื่อนๆ] ถ้าจะเพิ่มตารางใหม่ (Table) เช่น Order, LaundryItem 
