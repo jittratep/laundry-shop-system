@@ -1,17 +1,89 @@
 // frontend/src/app/pages/CustomerPortal.tsx (หน้าแดชบอร์ดสำหรับลูกค้าในระบบ Customer Portal)
-import { createSignal, For, Show } from "solid-js";
+import { createSignal, For, Show, onMount } from "solid-js";
 import { useNavigate } from "@solidjs/router";
+import { api } from "../utils/api";
 
 export default function CustomerPortal() {
-  // --- ข้อมูลจำลอง (Mock Data) ---
-  const customer = {
-    id: "CUST001",
-    name: "คุณวชิระพล สิริอิสสระนันท์",
-    phone: "081-234-5678",
-    address: "123 ถ.สุขุมวิท กรุงเทพฯ",
-    loyaltyPoints: 750,
-    totalOrders: 15,
+  // // --- ข้อมูลจำลอง (Mock Data) ---
+  // const customer = {
+  //   id: "CUST001",
+  //   name: "คุณวชิระพล สิริอิสสระนันท์",
+  //   phone: "081-234-5678",
+  //   address: "123 ถ.สุขุมวิท กรุงเทพฯ",
+  //   loyaltyPoints: 750,
+  //   totalOrders: 15,
+  // };
+
+  // 🟢 1. สร้าง State สำหรับเก็บข้อมูลลูกค้า (ใส่ค่าเริ่มต้นไว้ก่อนโหลดเสร็จ)
+  const [customer, setCustomer] = createSignal({
+    id: "",
+    name: "กำลังโหลด...",
+    phone: "-",
+    address: "-",
+    points: 0,
+    totalOrders: 0 // Mock ไว้ก่อนรอระบบ Order
+  });
+
+  // --- States สำหรับโหมดแก้ไขข้อมูล ---
+  const [isEditing, setIsEditing] = createSignal(false);
+  const [editForm, setEditForm] = createSignal({ name: "", phone: "", address: "" });
+
+  // 🟢 ฟังก์ชันเตรียมข้อมูลก่อนเริ่มแก้
+  const startEditing = () => {
+    setEditForm({
+      name: customer().name,
+      phone: customer().phone,
+      address: customer().address === "ยังไม่ได้ระบุที่อยู่" ? "" : customer().address,
+    });
+    setIsEditing(true);
   };
+
+  // 🟢 ฟังก์ชันตอนกดปุ่มบันทึก
+  const handleSaveProfile = async () => {
+    try {
+      const res = await api.updateProfile(editForm());
+      
+      // อัปเดตข้อมูลใน State ทันทีที่ API ตอบกลับมาว่าสำเร็จ
+      setCustomer(prev => ({
+        ...prev,
+        name: res.data.name,
+        phone: res.data.phone,
+        address: res.data.address || "ยังไม่ได้ระบุที่อยู่"
+      }));
+      
+      // อัปเดตชื่อใน LocalStorage เผื่อใช้อ้างอิงที่อื่น
+      localStorage.setItem("userName", res.data.name);
+      
+      setIsEditing(false); // ปิดโหมดแก้ไข
+      alert("อัปเดตข้อมูลส่วนตัวสำเร็จ!");
+    } catch (error: any) {
+      alert(error.message);
+    }
+  };
+
+  // 🟢 2. ดึงข้อมูลจาก API ทันทีที่โหลดหน้านี้
+  onMount(async () => {
+    try {
+      const response = await api.getProfile();
+      const data = response.data;
+      
+      // อัปเดตข้อมูลที่ได้จาก Database ลงไปใน State
+      setCustomer({
+        id: data.id,
+        name: data.name,
+        phone: data.phone,
+        address: data.address || "ยังไม่ได้ระบุที่อยู่", // ถ้าไม่มีที่อยู่ให้แสดงข้อความนี้
+        points: data.points || 0,
+        totalOrders: 15 // ตอนนี้สมมติเลขไปก่อน จนกว่าจะทำ API Order
+      });
+    } catch (error) {
+      // ถ้า Token หมดอายุ หรือดึงข้อมูลไม่ได้ ให้เด้งกลับไปหน้า Login
+      console.error(error);
+      handleLogout();
+    }
+  });
+
+
 
   const mockOrders = [
     {
@@ -117,6 +189,22 @@ export default function CustomerPortal() {
     }
   }
 
+  // 🟢 [เพิ่มใหม่] ฟังก์ชันคำนวณระดับสมาชิกลูกค้าตามคะแนน
+  const getCustomerTier = (points: number) => {
+    if (points >= 2000) return "gold";
+    if (points >= 1000) return "silver";
+    if (points >= 500) return "bronze";
+    return "none"; // ยังไม่ถึงระดับ Bronze
+  };
+
+  // 🟢 [เพิ่มใหม่] คำนวณคะแนนที่ต้องการสำหรับระดับถัดไป
+  const getNextTierTarget = (points: number) => {
+    if (points >= 2000) return 2000; // ตันที่ Gold
+    if (points >= 1000) return 2000; // เป้าหมายต่อไปคือ Gold
+    if (points >= 500) return 1000;  // เป้าหมายต่อไปคือ Silver
+    return 500;                      // เป้าหมายแรกคือ Bronze
+  };
+
   // --- Icons (SVG) ---
   const IconAward = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>;
   const IconPhone = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>;
@@ -135,7 +223,7 @@ export default function CustomerPortal() {
           <div class="flex items-start justify-between mb-4">
             <div class="flex-1">
               <h1 class="text-3xl font-bold">ยินดีต้อนรับกลับมา!</h1>
-              <p class="text-blue-100 mt-2 text-lg">{customer.name}</p>
+              <p class="text-blue-100 mt-2 text-lg">{customer().name}</p>
             </div>
             
             {/* 🟢 [เพิ่มกลุ่มปุ่ม Logout และ กล่องคะแนน] */}
@@ -152,7 +240,7 @@ export default function CustomerPortal() {
               <div class="text-right">
                 <div class="bg-white/20 backdrop-blur-md rounded-2xl p-4 shadow-lg border border-white/20 flex flex-col items-center">
                   <IconAward />
-                  <p class="text-3xl font-bold mt-1">{customer.loyaltyPoints}</p>
+                  <p class="text-3xl font-bold mt-1">{customer().points}</p>
                   <p class="text-xs text-blue-100 font-medium tracking-wide uppercase">คะแนนสะสม</p>
                 </div>
               </div>
@@ -166,7 +254,7 @@ export default function CustomerPortal() {
             </div>
             <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
               <p class="text-sm text-blue-100 font-medium">ออเดอร์ทั้งหมด</p>
-              <p class="text-3xl font-bold mt-1">{customer.totalOrders}</p>
+              <p class="text-3xl font-bold mt-1">{customer().totalOrders}</p>
             </div>
           </div>
         </div>
@@ -175,23 +263,88 @@ export default function CustomerPortal() {
       <div class="container mx-auto max-w-4xl p-4 -mt-10">
         
         {/* Contact Info Card */}
-        <div class="bg-white rounded-2xl shadow-md border border-gray-100 p-5 mb-8">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="flex items-center gap-4">
-              <div class="bg-blue-50 p-3 rounded-full text-blue-600"><IconPhone /></div>
-              <div>
-                <p class="text-xs text-gray-500 font-bold mb-0.5">เบอร์โทรศัพท์</p>
-                <p class="text-sm font-bold text-gray-900">{customer.phone}</p>
+        <div class="bg-white rounded-2xl shadow-md border border-gray-100 p-5 mb-8 relative">
+          
+          <Show when={!isEditing()}>
+            {/* --- โหมดดูข้อมูลปกติ --- */}
+            <button 
+              onClick={startEditing} 
+              class="absolute top-4 right-4 text-sm font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              แก้ไขข้อมูล
+            </button>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+              <div class="flex items-center gap-4">
+                <div class="bg-blue-50 p-3 rounded-full text-blue-600"><IconPhone /></div>
+                <div>
+                  <p class="text-xs text-gray-500 font-bold mb-0.5">เบอร์โทรศัพท์</p>
+                  <p class="text-sm font-bold text-gray-900">{customer().phone}</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-4">
+                <div class="bg-blue-50 p-3 rounded-full text-blue-600"><IconMapPin /></div>
+                <div>
+                  <p class="text-xs text-gray-500 font-bold mb-0.5">ที่อยู่จัดส่ง</p>
+                  <p class="text-sm font-bold text-gray-900">{customer().address}</p>
+                </div>
               </div>
             </div>
-            <div class="flex items-center gap-4">
-              <div class="bg-blue-50 p-3 rounded-full text-blue-600"><IconMapPin /></div>
-              <div>
-                <p class="text-xs text-gray-500 font-bold mb-0.5">ที่อยู่จัดส่ง</p>
-                <p class="text-sm font-bold text-gray-900">{customer.address}</p>
+          </Show>
+
+          <Show when={isEditing()}>
+            {/* --- โหมดแก้ไขข้อมูล (Form) --- */}
+            <div class="space-y-4">
+              <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-gray-900">แก้ไขข้อมูลส่วนตัว</h3>
+              </div>
+              
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-bold text-gray-700 mb-1">ชื่อ - นามสกุล</label>
+                  <input 
+                    type="text" 
+                    value={editForm().name} 
+                    onInput={(e) => setEditForm({...editForm(), name: e.currentTarget.value})}
+                    class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                  />
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-gray-700 mb-1">เบอร์โทรศัพท์</label>
+                  <input 
+                    type="tel" 
+                    value={editForm().phone} 
+                    onInput={(e) => setEditForm({...editForm(), phone: e.currentTarget.value})}
+                    class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                  />
+                </div>
+                <div class="md:col-span-2">
+                  <label class="block text-xs font-bold text-gray-700 mb-1">ที่อยู่จัดส่ง</label>
+                  <textarea 
+                    value={editForm().address} 
+                    onInput={(e) => setEditForm({...editForm(), address: e.currentTarget.value})}
+                    rows="2"
+                    class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" 
+                  ></textarea>
+                </div>
+              </div>
+
+              <div class="flex justify-end gap-2 mt-4 pt-4 border-t border-gray-100">
+                <button 
+                  onClick={() => setIsEditing(false)} 
+                  class="px-4 py-2 text-sm font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                  ยกเลิก
+                </button>
+                <button 
+                  onClick={handleSaveProfile} 
+                  class="px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                >
+                  บันทึกข้อมูล
+                </button>
               </div>
             </div>
-          </div>
+          </Show>
+          
         </div>
 
         {/* Custom Tabs */}
@@ -354,30 +507,56 @@ export default function CustomerPortal() {
               <div>
                 <div class="flex justify-between text-sm mb-2 font-bold">
                   <span class="text-gray-700">คะแนนปัจจุบัน</span>
-                  <span class="text-purple-700">{customer.loyaltyPoints} / 1000</span>
+                  {/* 🟢 อัปเดตเป้าหมายสูงสุดแบบไดนามิก */}
+                  <span class="text-purple-700">{customer().points} / {getNextTierTarget(customer().points)}</span>
                 </div>
                 <div class="w-full bg-white rounded-full h-3 border border-purple-100">
-                  <div class="bg-linear-to-br from-purple-500 to-blue-500 h-3 rounded-full transition-all" style={{ width: `${(customer.loyaltyPoints / 1000) * 100}%` }}></div>
+                  {/* 🟢 อัปเดต % หลอดคะแนนแบบไดนามิก */}
+                  <div 
+                    class="bg-linear-to-br from-purple-500 to-blue-500 h-3 rounded-full transition-all" 
+                    style={{ width: `${Math.min((customer().points / getNextTierTarget(customer().points)) * 100, 100)}%` }}
+                  ></div>
                 </div>
-                <p class="text-xs text-gray-500 mt-2 font-semibold">
-                  เหลืออีก {1000 - customer.loyaltyPoints} คะแนน เพื่อเลื่อนระดับเป็นระดับถัดไป!
-                </p>
+                
+                <Show when={customer().points < 2000} fallback={
+                   <p class="text-xs text-yellow-600 mt-2 font-bold">🎉 ยินดีด้วย! คุณอยู่ระดับสูงสุด (Gold) แล้ว</p>
+                }>
+                  <p class="text-xs text-gray-500 mt-2 font-semibold">
+                    เหลืออีก {getNextTierTarget(customer().points) - customer().points} คะแนน เพื่อเลื่อนระดับเป็นระดับถัดไป!
+                  </p>
+                </Show>
               </div>
 
+              {/* 🟢 กล่อง 3 ระดับ พร้อมเช็คสถานะปัจจุบัน */}
               <div class="grid grid-cols-3 gap-3 text-center mt-6">
-                <div class="p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
-                  <p class="text-xs font-bold text-gray-500 mb-1">บรอนซ์ (Bronze)</p>
+                
+                {/* กล่อง Bronze */}
+                <div class={`p-4 rounded-xl shadow-sm relative transition-transform ${getCustomerTier(customer().points) === 'bronze' ? 'bg-white border-2 border-orange-400 shadow-md transform scale-105' : 'bg-white/60 border border-gray-100'}`}>
+                  <Show when={getCustomerTier(customer().points) === 'bronze'}>
+                     <div class="absolute -top-2 -right-2 bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">ปัจจุบัน</div>
+                  </Show>
+                  <p class={`text-xs font-bold mb-1 ${getCustomerTier(customer().points) === 'bronze' ? 'text-orange-700' : 'text-gray-500'}`}>บรอนซ์ (Bronze)</p>
                   <p class="text-sm font-bold text-gray-900">500 pts</p>
                 </div>
-                <div class="p-4 bg-white rounded-xl border-2 border-purple-400 shadow-md relative transform scale-105">
-                  <div class="absolute -top-2 -right-2 bg-purple-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">ปัจจุบัน</div>
-                  <p class="text-xs font-bold text-purple-700 mb-1">ซิลเวอร์ (Silver)</p>
+
+                {/* กล่อง Silver */}
+                <div class={`p-4 rounded-xl shadow-sm relative transition-transform ${getCustomerTier(customer().points) === 'silver' ? 'bg-white border-2 border-gray-400 shadow-md transform scale-105' : 'bg-white/60 border border-gray-100'}`}>
+                   <Show when={getCustomerTier(customer().points) === 'silver'}>
+                     <div class="absolute -top-2 -right-2 bg-gray-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">ปัจจุบัน</div>
+                  </Show>
+                  <p class={`text-xs font-bold mb-1 ${getCustomerTier(customer().points) === 'silver' ? 'text-gray-700' : 'text-gray-500'}`}>ซิลเวอร์ (Silver)</p>
                   <p class="text-sm font-bold text-gray-900">1000 pts</p>
                 </div>
-                <div class="p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
-                  <p class="text-xs font-bold text-orange-500 mb-1">โกลด์ (Gold)</p>
+
+                {/* กล่อง Gold */}
+                <div class={`p-4 rounded-xl shadow-sm relative transition-transform ${getCustomerTier(customer().points) === 'gold' ? 'bg-white border-2 border-yellow-400 shadow-md transform scale-105' : 'bg-white/60 border border-gray-100'}`}>
+                  <Show when={getCustomerTier(customer().points) === 'gold'}>
+                     <div class="absolute -top-2 -right-2 bg-yellow-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">ปัจจุบัน</div>
+                  </Show>
+                  <p class={`text-xs font-bold mb-1 ${getCustomerTier(customer().points) === 'gold' ? 'text-yellow-600' : 'text-gray-500'}`}>โกลด์ (Gold)</p>
                   <p class="text-sm font-bold text-gray-900">2000 pts</p>
                 </div>
+
               </div>
             </div>
           </div>

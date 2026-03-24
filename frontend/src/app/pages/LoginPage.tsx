@@ -12,7 +12,13 @@ export default function LoginPage() {
   const [password, setPassword] = createSignal("");
   const [phone, setPhone] = createSignal("");
 
-// --- Handlers ---
+  // 🟢 State สำหรับสมัครสมาชิก
+  const [isRegistering, setIsRegistering] = createSignal(false);
+  const [registerName, setRegisterName] = createSignal("");
+  const [registerPhone, setRegisterPhone] = createSignal("");
+  const [registerPassword, setRegisterPassword] = createSignal("");
+
+  // --- Handlers ---
   const handleStaffLogin = async (e: Event) => {
     e.preventDefault();
 
@@ -55,6 +61,61 @@ export default function LoginPage() {
     }
   };
 
+  // 🟢 ฟังก์ชันจัดการตอนกดปุ่มสมัครสมาชิก
+  const handleCustomerRegister = async (e: Event) => {
+    e.preventDefault();
+    try {
+      const response = await api.registerCustomer(registerName(), registerPhone(), registerPassword());
+      
+      alert("สมัครสมาชิกสำเร็จ! กำลังเข้าสู่ระบบ...");
+      
+      // Auto-login ให้เลยหลังจากสมัครเสร็จ (เพราะ Backend เราส่ง Token กลับมาให้ด้วย)
+      localStorage.setItem("userRole", "customer");
+      localStorage.setItem("userName", response.customer.name);
+      localStorage.setItem("token", response.token);
+      
+      window.location.href = "/customer-portal";
+    } catch (error: any) {
+      alert(error.message);
+    }
+  };
+
+  // --- States สำหรับลืมรหัสผ่าน ---
+  const [isForgotPassword, setIsForgotPassword] = createSignal(false);
+  const [otpSent, setOtpSent] = createSignal(false);
+  const [resetPhone, setResetPhone] = createSignal("");
+  const [otpCode, setOtpCode] = createSignal("");
+  const [newPassword, setNewPassword] = createSignal("");
+
+  // --- Handlers สำหรับลืมรหัสผ่าน ---
+  const handleRequestOtp = async () => {
+    if (!resetPhone()) return alert("กรุณากรอกเบอร์โทรศัพท์");
+    try {
+      await api.requestOtp(resetPhone());
+      alert("ระบบได้ส่งรหัส OTP ไปที่เบอร์ของคุณแล้ว (ดูรหัสใน Terminal ของ Backend)");
+      setOtpSent(true); // เปลี่ยนหน้าจอไปช่องกรอก OTP
+    } catch (error: any) {
+      alert(error.message);
+    }
+  };
+
+  const handleResetPassword = async (e: Event) => {
+    e.preventDefault();
+    try {
+      await api.resetPassword(resetPhone(), otpCode(), newPassword());
+      alert("เปลี่ยนรหัสผ่านสำเร็จ! กรุณาเข้าสู่ระบบด้วยรหัสผ่านใหม่");
+      
+      // ล้างค่าและกลับไปหน้าล็อกอิน
+      setIsForgotPassword(false);
+      setOtpSent(false);
+      setResetPhone("");
+      setOtpCode("");
+      setNewPassword("");
+    } catch (error: any) {
+      alert(error.message);
+    }
+  };
+
   const handleQuickLogin = (role: string) => {
     const roleNames: Record<string, string> = {
       'manager': 'ผู้จัดการร้าน',
@@ -79,6 +140,7 @@ export default function LoginPage() {
   const IconMail = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>;
   const IconLock = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>;
   const IconPhone = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>;
+  const IconUser = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>;
 
   return (
     <div class="min-h-screen bg-linear-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4">
@@ -171,56 +233,145 @@ export default function LoginPage() {
           {/* Tab Content: Customer */}
           <Show when={activeTab() === "customer"}>
             <div class="p-6 md:p-8">
-              <div class="mb-6">
-                <h2 class="text-xl font-bold text-gray-900">ติดตามสถานะซักรีด</h2>
-                <p class="text-sm text-gray-500 mt-1">เข้าสู่ระบบเพื่อดูประวัติและสถานะออเดอร์ของคุณ</p>
-              </div>
-
-              <form onSubmit={handleCustomerLogin} class="space-y-4">
-                <div class="space-y-2">
-                  <label class="block text-sm font-bold text-gray-700">เบอร์โทรศัพท์</label>
-                  <div class="relative">
-                    <span class="absolute left-3 top-3 text-gray-400"><IconPhone /></span>
-                    <input 
-                      type="tel" 
-                      placeholder="08X-XXX-XXXX" 
-                      value={phone()} 
-                      onInput={(e) => setPhone(e.currentTarget.value)}
-                      class="w-full bg-white border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                      required
-                    />
-                  </div>
+              
+              {/* === โหมด 1: เข้าสู่ระบบ === */}
+              <Show when={!isRegistering() && !isForgotPassword()}>
+                <div class="mb-6">
+                  <h2 class="text-xl font-bold text-gray-900">ติดตามสถานะซักรีด</h2>
+                  <p class="text-sm text-gray-500 mt-1">เข้าสู่ระบบเพื่อดูประวัติและสถานะออเดอร์ของคุณ</p>
                 </div>
 
-                <div class="space-y-2">
-                  <label class="block text-sm font-bold text-gray-700">รหัสผ่าน / รหัส OTP</label>
-                  <div class="relative">
-                    <span class="absolute left-3 top-3 text-gray-400"><IconLock /></span>
-                    <input 
-                      type="password" 
-                      placeholder="กรอกรหัสผ่าน หรือ รหัส OTP" 
-                      value={password()} 
-                      onInput={(e) => setPassword(e.currentTarget.value)}
-                      class="w-full bg-white border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                      required
-                    />
+                <form onSubmit={handleCustomerLogin} class="space-y-4">
+                  <div class="space-y-2">
+                    <label class="block text-sm font-bold text-gray-700">เบอร์โทรศัพท์</label>
+                    <div class="relative">
+                      <span class="absolute left-3 top-3 text-gray-400"><IconPhone /></span>
+                      <input type="tel" placeholder="08X-XXX-XXXX" value={phone()} onInput={(e) => setPhone(e.currentTarget.value)} class="w-full bg-white border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+                    </div>
                   </div>
+
+                  <div class="space-y-2">
+                    <label class="block text-sm font-bold text-gray-700">รหัสผ่าน</label>
+                    <div class="relative">
+                      <span class="absolute left-3 top-3 text-gray-400"><IconLock /></span>
+                      <input type="password" placeholder="••••••••" value={password()} onInput={(e) => setPassword(e.currentTarget.value)} class="w-full bg-white border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+                    </div>
+                  </div>
+
+                  <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition-colors mt-2">
+                    เข้าสู่ระบบ
+                  </button>
+
+                  <button type="button" onClick={() => setIsForgotPassword(true)} class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-50 transition-colors">
+                    ลืมรหัสผ่าน / ขอรหัส OTP
+                  </button>
+                </form>
+
+                <div class="mt-6 text-center">
+                  <p class="text-sm text-gray-600">
+                    ยังไม่มีบัญชีใช่ไหม? <button onClick={() => setIsRegistering(true)} class="text-blue-600 font-bold hover:underline">สมัครสมาชิกที่นี่</button>
+                  </p>
+                </div>
+              </Show>
+
+              {/* === โหมด 2: สมัครสมาชิก (โค้ดเดิม) === */}
+              <Show when={isRegistering()}>
+                <div class="mb-6">
+                  <h2 class="text-xl font-bold text-gray-900">สมัครสมาชิกใหม่</h2>
+                  <p class="text-sm text-gray-500 mt-1">ลงทะเบียนเพื่อสะสมแต้มและติดตามสถานะซักรีด</p>
                 </div>
 
-                <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition-colors mt-2">
-                  เข้าสู่ระบบ
-                </button>
+                <form onSubmit={handleCustomerRegister} class="space-y-4">
+                  {/* ... (ช่องกรอกชื่อ เบอร์โทร รหัสผ่าน โค้ดสมัครสมาชิกเดิมของคุณ) ... */}
+                  <div class="space-y-2">
+                    <label class="block text-sm font-bold text-gray-700">ชื่อ - นามสกุล</label>
+                    <div class="relative">
+                      <span class="absolute left-3 top-3 text-gray-400"><IconUser /></span>
+                      <input type="text" placeholder="คุณสมหญิง รักความสะอาด" value={registerName()} onInput={(e) => setRegisterName(e.currentTarget.value)} class="w-full bg-white border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+                    </div>
+                  </div>
 
-                <button type="button" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-50 transition-colors">
-                  ขอรับรหัส OTP ทาง SMS
-                </button>
-              </form>
+                  <div class="space-y-2">
+                    <label class="block text-sm font-bold text-gray-700">เบอร์โทรศัพท์ (ใช้เป็น Username)</label>
+                    <div class="relative">
+                      <span class="absolute left-3 top-3 text-gray-400"><IconPhone /></span>
+                      <input type="tel" placeholder="08X-XXX-XXXX" value={registerPhone()} onInput={(e) => setRegisterPhone(e.currentTarget.value)} minlength="9" maxlength="10" class="w-full bg-white border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+                    </div>
+                  </div>
 
-              <div class="mt-8 pt-6 border-t border-gray-100">
-                <button onClick={() => handleQuickLogin('customer')} class="w-full bg-gray-50 border border-gray-200 text-gray-700 font-bold py-2.5 rounded-xl hover:bg-gray-100 transition-colors">
-                  ทดลองเข้าสู่ระบบในฐานะลูกค้า (Demo)
-                </button>
-              </div>
+                  <div class="space-y-2">
+                    <label class="block text-sm font-bold text-gray-700">ตั้งรหัสผ่าน</label>
+                    <div class="relative">
+                      <span class="absolute left-3 top-3 text-gray-400"><IconLock /></span>
+                      <input type="password" placeholder="อย่างน้อย 6 ตัวอักษร" value={registerPassword()} onInput={(e) => setRegisterPassword(e.currentTarget.value)} minlength="6" class="w-full bg-white border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+                    </div>
+                  </div>
+
+                  <button type="submit" class="w-full bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 transition-colors mt-2">
+                    ยืนยันการสมัครสมาชิก
+                  </button>
+                </form>
+
+                <div class="mt-6 text-center">
+                  <p class="text-sm text-gray-600">
+                    มีบัญชีอยู่แล้ว? <button onClick={() => setIsRegistering(false)} class="text-blue-600 font-bold hover:underline">กลับไปเข้าสู่ระบบ</button>
+                  </p>
+                </div>
+              </Show>
+
+              {/* === โหมด 3: ลืมรหัสผ่าน (เพิ่มใหม่) === */}
+              <Show when={isForgotPassword()}>
+                <div class="mb-6">
+                  <h2 class="text-xl font-bold text-gray-900">ลืมรหัสผ่าน</h2>
+                  <p class="text-sm text-gray-500 mt-1">ระบบจะส่งรหัส OTP ไปยังเบอร์โทรศัพท์ของคุณ</p>
+                </div>
+
+                <form onSubmit={handleResetPassword} class="space-y-4">
+                  
+                  {/* ถ้ายืนยันเบอร์แล้ว (otpSent = true) ให้ช่องเบอร์โทรแก้ไม่ได้ */}
+                  <div class="space-y-2">
+                    <label class="block text-sm font-bold text-gray-700">เบอร์โทรศัพท์</label>
+                    <div class="flex gap-2">
+                      <div class="relative flex-1">
+                        <span class="absolute left-3 top-3 text-gray-400"><IconPhone /></span>
+                        <input type="tel" placeholder="08X-XXX-XXXX" value={resetPhone()} onInput={(e) => setResetPhone(e.currentTarget.value)} disabled={otpSent()} class={`w-full border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${otpSent() ? "bg-gray-100 text-gray-500" : "bg-white"}`} required />
+                      </div>
+                      <Show when={!otpSent()}>
+                        <button type="button" onClick={handleRequestOtp} class="bg-blue-100 text-blue-700 font-bold px-4 rounded-xl hover:bg-blue-200 transition-colors text-sm">
+                          ขอ OTP
+                        </button>
+                      </Show>
+                    </div>
+                  </div>
+
+                  {/* ช่องกรอก OTP และ รหัสผ่านใหม่ จะโผล่มาก็ต่อเมื่อกดขอ OTP แล้ว */}
+                  <Show when={otpSent()}>
+                    <div class="space-y-2 animate-fade-in">
+                      <label class="block text-sm font-bold text-gray-700">รหัส OTP 6 หลัก</label>
+                      <input type="text" placeholder="••••••" value={otpCode()} onInput={(e) => setOtpCode(e.currentTarget.value)} maxlength="6" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-center tracking-[0.5em] text-lg font-bold focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+                    </div>
+
+                    <div class="space-y-2 animate-fade-in">
+                      <label class="block text-sm font-bold text-gray-700">ตั้งรหัสผ่านใหม่</label>
+                      <div class="relative">
+                        <span class="absolute left-3 top-3 text-gray-400"><IconLock /></span>
+                        <input type="password" placeholder="อย่างน้อย 6 ตัวอักษร" value={newPassword()} onInput={(e) => setNewPassword(e.currentTarget.value)} minlength="6" class="w-full bg-white border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+                      </div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition-colors mt-4">
+                      เปลี่ยนรหัสผ่าน
+                    </button>
+                  </Show>
+                </form>
+
+                <div class="mt-6 text-center">
+                  <button onClick={() => { setIsForgotPassword(false); setOtpSent(false); }} class="text-sm font-bold text-gray-500 hover:text-gray-700 hover:underline">
+                    ← กลับไปหน้าเข้าสู่ระบบ
+                  </button>
+                </div>
+              </Show>
+
             </div>
           </Show>
 
