@@ -119,6 +119,100 @@ export const api = {
     return res.json();
   },
 
+  // 🟢 8. ดึงรายชื่อลูกค้า (ค้นหาได้)
+  getCustomers: async (search: string = "") => {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("กรุณาเข้าสู่ระบบ");
+
+    const res = await fetch(`${API_URL}/customers?search=${encodeURIComponent(search)}`, {
+      method: "GET",
+      headers: { "Authorization": `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("ดึงข้อมูลลูกค้าล้มเหลว");
+    return res.json();
+  },
+
+  // 🟢 9. เพิ่มลูกค้าใหม่โดยพนักงาน
+  createCustomer: async (data: { name: string; phone: string; email?: string; address?: string }) => {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("กรุณาเข้าสู่ระบบ");
+
+    const res = await fetch(`${API_URL}/customers`, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify(data),
+    });
+    
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || "เพิ่มลูกค้าล้มเหลว");
+    }
+    return res.json();
+  },
+
+  // 🟢 10. สร้างออเดอร์ใหม่
+  createOrder: async (orderData: any) => {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("กรุณาเข้าสู่ระบบ");
+
+    const res = await fetch(`${API_URL}/orders`, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify(orderData),
+    });
+    
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || "สร้างออเดอร์ล้มเหลว");
+    }
+    return res.json();
+  },
+
+  // 🟢 11. ดึงรายการออเดอร์ทั้งหมด (รองรับการค้นหา)
+  getOrders: async (search: string = "") => {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("กรุณาเข้าสู่ระบบ");
+
+    const res = await fetch(`${API_URL}/orders?search=${encodeURIComponent(search)}`, {
+      method: "GET",
+      headers: { "Authorization": `Bearer ${token}` },
+    });
+    
+    if (!res.ok) throw new Error("ดึงข้อมูลออเดอร์ล้มเหลว");
+    return res.json();
+  },
+
+  //🟢 12. ดึงข้อมูลออเดอร์รายตัว
+  getOrderById: async (id: string) => {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`${API_URL}/orders/${id}`, {
+      headers: { "Authorization": `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("ดึงข้อมูลออเดอร์ล้มเหลว");
+    return res.json();
+  },
+
+  //🟢 13. อัปเดตออเดอร์
+  updateOrder: async (id: string, data: any) => {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`${API_URL}/orders/${id}`, {
+      method: "PUT",
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}` 
+      },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("อัปเดตออเดอร์ล้มเหลว");
+    return res.json();
+  },
+  
   // 🔵 [เพื่อนๆ] เพิ่มฟังก์ชันเรียก API อื่นๆ ต่อตรงนี้ครับ
   // ตัวอย่าง: 
   // getOrders: async () => {
