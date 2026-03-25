@@ -18,6 +18,7 @@ export default function CustomerPage() {
   const [customers, setCustomers] = createSignal<any[]>([]);
   const [searchQuery, setSearchQuery] = createSignal("");
 
+
   // 🟢 2. โหลดข้อมูลลูกค้าเมื่อเปิดหน้านี้ครั้งแรก
   onMount(() => {
     loadCustomers();
@@ -87,26 +88,41 @@ export default function CustomerPage() {
   const [paymentMethod, setPaymentMethod] = createSignal("cash");
 
   // 🟢 [เพิ่มใหม่] ฟังก์ชันกดบันทึกออเดอร์
-    const handleCreateOrder = async () => {
+  const handleCreateOrder = async () => {
     if (!selectedCustomer()) return showToast("กรุณาเลือกลูกค้าก่อนสร้างออเดอร์", "error");
     
     try {
-      await api.createOrder({
+      const res = await api.createOrder({
         customerId: selectedCustomer().id,
         paymentMethod: paymentMethod(),
         items: orderItems(),
-        usedPoints: pointsToUse(), // 🟢 ส่งคะแนนที่ใช้แลกไปให้ Backend ด้วย
+        usedPoints: pointsToUse(),
       });
 
       showToast("สร้างออเดอร์สำเร็จ! 🎉", "success");
       
-      // ล้างข้อมูล
+      // 🟢 1. เก็บข้อมูลออเดอร์ที่สร้างเสร็จไว้ส่งให้ใบเสร็จ
+      setCompletedOrderData({
+         ...res.data, // ดึงข้อมูลจาก Backend มาเลย
+         items: orderItems(),
+         paymentMethod: paymentMethod(),
+         usedPoints: pointsToUse(),
+         netTotal: netAmount() // ยอดสุทธิ
+      });
+
+      // 🟢 2. เปิดหน้าต่างใบเสร็จ
+      setShowReceiptModal(true);
+      
+      // ล้างข้อมูลฟอร์ม
       setOrderItems([{ id: Date.now(), type: "", quantity: 1, price: 50, service: "ซักพับ" }]);
       setPaymentMethod("cash");
-      setPointsToUse(0); // ล้างคะแนนที่ใช้
+      setPointsToUse(0); 
+      setCashReceived(0); // ล้างเงินทอน
       
       loadCustomers();
-      setActiveTab("search");
+      // 🟢 หมายเหตุ: เราจะไม่เด้งกลับไปหน้าค้นหา (setActiveTab("search")) ทันที 
+      // จะรอให้พนักงานกดปิดใบเสร็จก่อนค่อยเด้งกลับครับ
+      
     } catch (error: any) {
       showToast(error.message, "error");
     }
@@ -126,6 +142,135 @@ export default function CustomerPage() {
   const pointsToEarn = () => Math.floor(netAmount() / 10);
 
 
+  // --- States สำหรับระบบชำระเงินและใบเสร็จ ---
+  const [cashReceived, setCashReceived] = createSignal<number>(0); // เงินสดที่รับมา
+  const [showReceiptModal, setShowReceiptModal] = createSignal(false); // เปิด/ปิด Modal
+  const [completedOrderData, setCompletedOrderData] = createSignal<any>(null); // ข้อมูลออเดอร์ที่เพิ่งสร้างเสร็จ
+
+  // 🟢 ฟังก์ชันสั่งพิมพ์
+  const handlePrint = () => {
+    window.print();
+  };
+
+  // 🟢 Modal ใบเสร็จ
+  const ReceiptModal = () => (
+    <Show when={showReceiptModal() && completedOrderData()}>
+      <div class="fixed inset-0 bg-gray-900/60 z-50 flex items-center justify-center p-4">
+        <div class="bg-gray-100 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-fade-in flex flex-col md:flex-row gap-4 p-6">
+          
+          {/* 📄 ส่วนที่ 1: ใบเสร็จให้ลูกค้า (Receipt) */}
+          <div id="printable-receipt" class="bg-white p-6 rounded-xl shadow-sm flex-1 font-mono text-sm border border-gray-200">
+            <div class="text-center mb-6">
+              <h2 class="text-xl font-bold">WASH & CLEAR</h2>
+              <p class="text-xs text-gray-500">123 ถนนสุขุมวิท กทม. 10110</p>
+              <p class="text-xs text-gray-500">โทร. 02-123-4567</p>
+              <div class="mt-4 pb-4 border-b border-dashed border-gray-300">
+                <p class="font-bold text-lg mb-1">ใบเสร็จรับเงิน (Receipt)</p>
+                <p class="text-xs">ออเดอร์: {completedOrderData().orderNumber}</p>
+                <p class="text-xs">วันที่: {new Date(completedOrderData().createdAt).toLocaleString('th-TH')}</p>
+              </div>
+            </div>
+
+            <div class="space-y-2 mb-4 pb-4 border-b border-dashed border-gray-300">
+              <p class="font-bold mb-2">ลูกค้า: {selectedCustomer()?.name}</p>
+              <For each={completedOrderData().items}>
+                {(item: any) => (
+                  <div class="flex justify-between">
+                    <span>{item.quantity}x {item.type} ({item.service})</span>
+                    <span>฿{item.quantity * item.price}</span>
+                  </div>
+                )}
+              </For>
+            </div>
+
+            <div class="space-y-1 mb-4 pb-4 border-b border-dashed border-gray-300 font-bold">
+               <div class="flex justify-between">
+                <span>ยอดรวม</span>
+                <span>฿{completedOrderData().items.reduce((sum: number, item: any) => sum + (item.quantity * item.price), 0)}</span>
+              </div>
+              <Show when={completedOrderData().usedPoints > 0}>
+                <div class="flex justify-between text-red-500">
+                  <span>ส่วนลด (ใช้ {completedOrderData().usedPoints} แต้ม)</span>
+                  <span>-฿{Math.floor(completedOrderData().usedPoints / 10)}</span>
+                </div>
+              </Show>
+              <div class="flex justify-between text-lg mt-2">
+                <span>ยอดสุทธิ</span>
+                <span>฿{completedOrderData().netTotal}</span>
+              </div>
+            </div>
+
+            <div class="text-xs space-y-2">
+              <p>ชำระด้วย: <span class="uppercase font-bold">{completedOrderData().paymentMethod}</span></p>
+              
+              {/* 🟢 ระบบเงินทอน */}
+              <Show when={completedOrderData().paymentMethod === 'cash'}>
+                <div class="flex items-center gap-2 mt-2 no-print">
+                  <span class="font-bold">รับเงินมา:</span>
+                  <input 
+                    type="number" 
+                    value={cashReceived()} 
+                    onInput={(e) => setCashReceived(Number(e.currentTarget.value))}
+                    class="border rounded px-2 py-1 w-24 text-right"
+                    placeholder="0"
+                  />
+                  <span>บาท</span>
+                </div>
+                <Show when={cashReceived() > 0}>
+                  <div class="flex justify-between font-bold text-green-600 mt-2 text-base">
+                    <span>เงินทอน:</span>
+                    <span>฿{Math.max(0, cashReceived() - completedOrderData().netTotal)}</span>
+                  </div>
+                </Show>
+              </Show>
+
+              {/* 🟢 ระบบ PromptPay QR */}
+              <Show when={completedOrderData().paymentMethod === 'promptpay'}>
+                <div class="text-center mt-4 p-4 border rounded-xl bg-blue-50 border-blue-200">
+                  <p class="font-bold text-blue-900 mb-2">สแกนเพื่อชำระเงิน</p>
+                  {/* ใช้ API ฟรีสร้าง QR Code หลอกๆ เป็นเบอร์พร้อมเพย์ */}
+                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=PROMPTPAY:0812345678:${completedOrderData().netTotal}`} alt="PromptPay QR" class="mx-auto mix-blend-multiply" />
+                  <p class="text-[10px] text-gray-500 mt-2">ยอดเงิน: {completedOrderData().netTotal} บาท</p>
+                </div>
+              </Show>
+            </div>
+            
+            <p class="text-center text-xs mt-8 font-bold">ขอบคุณที่ใช้บริการค่ะ 🙏</p>
+          </div>
+
+          {/* 🏷️ ส่วนที่ 2: ใบรับผ้า (สำหรับแปะตะกร้า) & ปุ่ม Action */}
+          <div class="flex-1 flex flex-col gap-4 no-print">
+            
+            <div class="bg-yellow-50 p-6 rounded-xl shadow-sm border border-yellow-200 flex-1">
+              <h3 class="font-bold text-yellow-900 mb-4 text-center border-b border-yellow-200 pb-2">ใบติดตะกร้า (Laundry Tag)</h3>
+              <div class="text-center mb-4">
+                {/* 🟢 สร้าง QR Code เลขออเดอร์ให้พนักงานสแกน */}
+                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${completedOrderData().orderNumber}`} alt="Order QR" class="mx-auto mb-2 mix-blend-multiply rounded-lg" />
+                <p class="font-bold text-xl">{completedOrderData().orderNumber}</p>
+                <p class="text-sm font-semibold text-gray-700">{selectedCustomer()?.name}</p>
+              </div>
+              <div class="text-sm text-gray-800 space-y-1">
+                <p>รวมทั้งหมด: <span class="font-bold">{completedOrderData().items.reduce((sum: number, item: any) => sum + item.quantity, 0)} ชิ้น</span></p>
+                <p class="uppercase">บริการ: <span class="font-bold text-blue-600">{completedOrderData().items[0]?.service}</span></p>
+              </div>
+            </div>
+
+            <div class="flex gap-2">
+              <button onClick={() => { setShowReceiptModal(false); setSelectedCustomer(null); }} class="flex-1 bg-gray-200 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-300 transition-colors">
+                ปิด / ทำรายการใหม่
+              </button>
+              <button onClick={handlePrint} class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
+                🖨️ พิมพ์ใบเสร็จ
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </Show>
+  );
+
+  
   return (
     <div class="max-w-5xl mx-auto py-4 relative"> {/* 🟢 เติม relative เพื่อให้ toast เกาะอยู่กับคอนเทนเนอร์นี้ */}
       {/* ส่วนหัวหน้าจอ */}
@@ -547,7 +692,10 @@ export default function CustomerPage() {
             </div>
           </div>
         </Show>
-                    
+
+        {/* 🟢 2. เรียกใช้ Modal ใบเสร็จแค่นี้พอครับ! */}
+        {ReceiptModal()}
+        
       </div>
     </div>
   );

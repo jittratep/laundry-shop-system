@@ -58,10 +58,12 @@ orders.post("/", authMiddleware, async (c) => {
           orderNumber,
           customerId,
           totalAmount,
-          status: "pending", // สถานะเริ่มต้น
+          // 🟢 1. แก้ตรงนี้! จาก "paid" เป็น "pending" (สถานะคิวงานเริ่มต้น = รอดำเนินการ)
+          status: "pending", 
           estimatedCompletion,
           paymentMethod,
-          paymentStatus: paymentMethod === "cash" ? "paid" : "pending", // สมมติเงินสดคือจ่ายเลย
+          // 🟢 2. แก้ตรงนี้! ให้บันทึกการจ่ายเงินเป็น "paid" เสมอ (ไม่ว่าจะเป็นเงินสด, โอน, บัตร)
+          paymentStatus: "paid", 
           items: {
             create: items.map(item => ({
               type: item.type,
@@ -79,7 +81,7 @@ orders.post("/", authMiddleware, async (c) => {
           orderId: order.id,
           amount: totalAmount,
           method: paymentMethod,
-          status: paymentMethod === "cash" ? "paid" : "pending"
+          status: "paid"
         }
       });
 

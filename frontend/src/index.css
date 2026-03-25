@@ -1,1 +1,20 @@
 @import "tailwindcss";
+
+/* --- สำหรับระบบ Print ใบเสร็จ --- */
+@media print {
+  body * {
+    visibility: hidden; /* ซ่อนทุกอย่างบนหน้าจอ */
+  }
+  #printable-receipt, #printable-receipt * {
+    visibility: visible; /* แสดงเฉพาะกล่องที่มี id="printable-receipt" */
+  }
+  #printable-receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  .no-print {
+    display: none !important; /* ซ่อนปุ่มต่างๆ ตอนปริ้น */
+  }
+}

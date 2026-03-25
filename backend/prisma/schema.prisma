@@ -85,8 +85,8 @@ model Payment {
   amount      Float
   method      String   // cash, promptpay, credit
   status      String   @default("paid") // pending, paid
-  
-  order       Order    @relation(fields: [orderId], references: [id])
+  // 🟢 เติม onDelete: Cascade ด้านหลัง
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

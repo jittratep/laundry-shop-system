@@ -92,36 +92,6 @@ export default function CustomerPortal() {
     }
   });
 
-
-
-  const mockOrders = [
-    {
-      id: "ORD001",
-      status: "washing",
-      createdAt: "2026-03-05T08:30:00",
-      estimatedCompletion: "2026-03-06T14:00:00",
-      items: [
-        { id: 1, type: "เสื้อเชิ้ต", service: "ซักรีด", quantity: 3, pricePerItem: 50 },
-        { id: 2, type: "กางเกงสแล็ค", service: "ซักรีด", quantity: 2, pricePerItem: 60 },
-      ],
-      totalAmount: 270,
-      paymentStatus: "paid",
-      paymentMethod: "promptpay",
-    },
-    {
-      id: "ORD002",
-      status: "completed",
-      createdAt: "2026-02-28T10:00:00",
-      estimatedCompletion: "2026-03-01T12:00:00",
-      items: [
-        { id: 3, type: "ผ้าปูที่นอน", service: "ซักพับ", quantity: 1, pricePerItem: 150 },
-      ],
-      totalAmount: 150,
-      paymentStatus: "paid",
-      paymentMethod: "cash",
-    },
-  ];
-
   // --- States เพื่อจัดการแท็บออเดอร์ ---
   const [activeTab, setActiveTab] = createSignal("active");
   const navigate = useNavigate();
