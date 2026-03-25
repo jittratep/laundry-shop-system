@@ -8,6 +8,7 @@ import profileRoutes from "./routes/profile"; // Now this will work! ✅
 import customer from "./routes/customer";
 import orders from "./routes/orders";
 import machines from './routes/machines'
+import dashboard from "./routes/dashboard";
 
 
 // 🟢 1. สร้าง App หลัก (ไม่ต้องมี basePath)
@@ -23,7 +24,7 @@ app.use('/uploads/*', serveStatic({ root: './public' }));
 // 🟢 3. สร้างกลุ่ม API ย่อย (ใส่ basePath /api ไว้ตรงนี้แทน)
 const api = new Hono().basePath("/api");
 
-// --- ROUTES ---
+
 
 // --- ROUTES (เอาไปต่อกับ api แทน app) ---
 api.route("/auth", authRoutes);
@@ -31,6 +32,7 @@ api.route("/profile", profileRoutes);
 api.route("/customers", customer);
 api.route("/orders", orders);
 api.route("/machines", machines);
+api.route("/dashboard", dashboard);
 
 // 🟠 [เพื่อนๆ] ถ้าจะสร้าง API ใหม่ (เช่น Orders) ให้ทำตามนี้:
 // 1. สร้างไฟล์ src/routes/orders.ts

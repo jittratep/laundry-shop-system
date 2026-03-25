@@ -269,6 +269,16 @@ export const api = {
     return res.json();
   },
 
+  // 🟢 18. ดึงข้อมูลสถิติสำหรับ Manager Dashboard
+  getDashboardAnalytics: async () => {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`${API_URL}/dashboard`, {
+      headers: { "Authorization": `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("ดึงข้อมูล Dashboard ล้มเหลว");
+    return res.json();
+  },
+
   // 🔵 [เพื่อนๆ] เพิ่มฟังก์ชันเรียก API อื่นๆ ต่อตรงนี้ครับ
   // ตัวอย่าง: 
   // getOrders: async () => {
