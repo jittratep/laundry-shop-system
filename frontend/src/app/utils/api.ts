@@ -213,10 +213,68 @@ export const api = {
     return res.json();
   },
   
+  // 🟢 14. ดึงรายการเครื่องซักผ้าทั้งหมด
+  getMachines: async () => {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`${API_URL}/machines`, {
+      headers: { "Authorization": `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("ดึงข้อมูลเครื่องจักรล้มเหลว");
+    return res.json();
+  },
+
+  // 🟢 15. ดึงข้อมูลคิวงานทั้งหมด
+  getQueueOrders: async () => {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`${API_URL}/orders/queue/all`, {
+      headers: { "Authorization": `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("ดึงข้อมูลคิวงานล้มเหลว");
+    return res.json();
+  },
+
+  // 🟢 16. อัปเดตสถานะคิวงาน
+  updateQueueStatus: async (id: string, data: any) => {
+    const token = localStorage.getItem("token");
+    
+    // เช็คว่าข้อมูลที่ส่งมาเป็นกล่อง FormData หรือข้อความปกติ
+    const isFormData = data instanceof FormData;
+
+    const headers: any = {
+      "Authorization": `Bearer ${token}`
+    };
+
+    // ถ้าเป็นข้อความปกติ ถึงจะใส่ Content-Type (ถ้าเป็นไฟล์ ไม่ต้องใส่ เดี๋ยว Browser จัดการให้)
+    if (!isFormData) {
+      headers["Content-Type"] = "application/json";
+    }
+
+    const res = await fetch(`${API_URL}/orders/${id}/queue`, {
+      method: "PUT",
+      headers,
+      body: isFormData ? data : JSON.stringify(data),
+    });
+    
+    if (!res.ok) throw new Error("อัปเดตสถานะคิวงานล้มเหลว");
+    return res.json();
+  },
+  
+  // 🟢 17. ดึงรายการออเดอร์ของลูกค้าที่ล็อกอินอยู่
+  getMyOrders: async () => {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`${API_URL}/orders/my-orders`, {
+      headers: { "Authorization": `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("ดึงข้อมูลออเดอร์ล้มเหลว");
+    return res.json();
+  },
+
   // 🔵 [เพื่อนๆ] เพิ่มฟังก์ชันเรียก API อื่นๆ ต่อตรงนี้ครับ
   // ตัวอย่าง: 
   // getOrders: async () => {
   //   const res = await fetch(`${API_URL}/orders`);
   //   return res.json();
   // }
+
+  
 };

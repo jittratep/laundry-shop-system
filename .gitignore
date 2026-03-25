@@ -56,3 +56,7 @@ temp/
 .temp/
 BEST_PRACTICES.md
 ARCHITECTURE.md
+
+# Ignore all files in uploads but keep the folder
+backend/public/uploads/*
+!backend/public/uploads/.gitkeep

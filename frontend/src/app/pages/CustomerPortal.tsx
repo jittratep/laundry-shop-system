@@ -64,20 +64,29 @@ export default function CustomerPortal() {
   // 🟢 2. ดึงข้อมูลจาก API ทันทีที่โหลดหน้านี้
   onMount(async () => {
     try {
-      const response = await api.getProfile();
-      const data = response.data;
+      // โหลดทั้ง Profile และ Orders พร้อมกัน
+      const [profileRes, ordersRes] = await Promise.all([
+        api.getProfile(),
+        api.getMyOrders()
+      ]);
       
-      // อัปเดตข้อมูลที่ได้จาก Database ลงไปใน State
+      const data = profileRes.data;
+      const myOrdersData = ordersRes.data;
+
+      // อัปเดตข้อมูลลูกค้า
       setCustomer({
         id: data.id,
         name: data.name,
         phone: data.phone,
-        address: data.address || "ยังไม่ได้ระบุที่อยู่", // ถ้าไม่มีที่อยู่ให้แสดงข้อความนี้
+        address: data.address || "ยังไม่ได้ระบุที่อยู่",
         points: data.points || 0,
-        totalOrders: 15 // ตอนนี้สมมติเลขไปก่อน จนกว่าจะทำ API Order
+        totalOrders: myOrdersData.length // 🟢 ใช้จำนวนออเดอร์ของจริง!
       });
+
+      // อัปเดตข้อมูลออเดอร์
+      setOrders(myOrdersData);
+
     } catch (error) {
-      // ถ้า Token หมดอายุ หรือดึงข้อมูลไม่ได้ ให้เด้งกลับไปหน้า Login
       console.error(error);
       handleLogout();
     }
@@ -117,6 +126,9 @@ export default function CustomerPortal() {
   const [activeTab, setActiveTab] = createSignal("active");
   const navigate = useNavigate();
 
+  // 🟢 State เก็บข้อมูลออเดอร์ของจริง
+  const [orders, setOrders] = createSignal<any[]>([]);
+
   // [ฟังก์ชัน Logout]
   const handleLogout = () => {
     localStorage.removeItem("userRole");
@@ -125,9 +137,9 @@ export default function CustomerPortal() {
     navigate("/", { replace: true });
   };
 
-  // --- จัดกลุ่มออเดอร์ ---
-  const activeOrders = () => mockOrders.filter(o => o.status !== "completed" && o.status !== "cancelled");
-  const completedOrders = () => mockOrders.filter(o => o.status === "completed");
+  // --- จัดกลุ่มออเดอร์ (เปลี่ยนมาดึงจาก State orders แทน mockOrders) ---
+  const activeOrders = () => orders().filter(o => o.status !== "completed" && o.status !== "cancelled");
+  const completedOrders = () => orders().filter(o => o.status === "completed");
 
   // --- Helper Functions เพื่อจัดการข้อมูลออเดอร์ ---
   const getOrderProgress = (status: string) => {
@@ -379,7 +391,7 @@ export default function CustomerPortal() {
                     <div class="p-6 border-b border-gray-100">
                       <div class="flex items-start justify-between mb-6">
                         <div>
-                          <h3 class="text-xl font-bold text-gray-900">{order.id}</h3>
+                          <h3 class="text-xl font-bold text-gray-900">{order.orderNumber}</h3>
                           <p class="text-sm text-gray-500 mt-1">วันที่สั่ง: {new Date(order.createdAt).toLocaleDateString('th-TH')}</p>
                         </div>
                         <span class={`px-3 py-1 rounded-full text-xs font-bold ${getStatusBadge(order.status)}`}>
@@ -415,6 +427,29 @@ export default function CustomerPortal() {
                         </For>
                       </div>
                     </div>
+
+                    {/* 🟢 [เพิ่มใหม่] โชว์การแจ้งปัญหาจากทางร้าน ถ้ามี! */}
+                    <Show when={order.issueDescription}>
+                      <div class="mt-6 bg-red-50 p-4 rounded-xl border border-red-100 flex flex-col gap-3">
+                        <div class="flex items-start gap-3">
+                          <span class="text-red-500 text-xl mt-0.5">⚠️</span>
+                          <div>
+                            <p class="font-bold text-red-900 text-sm">แจ้งเตือนปัญหาจากทางร้าน</p>
+                            <p class="text-red-700 text-sm mt-1">{order.issueDescription}</p>
+                          </div>
+                        </div>
+                        {/* โชว์รูปภาพปัญหาให้ลูกค้าดูด้วย */}
+                        <Show when={order.issueImageUrl}>
+                          <div class="ml-9 w-full">
+                            <img 
+                              src={`http://localhost:3000${order.issueImageUrl}`} 
+                              alt="Issue Upload" 
+                              class="w-full max-w-xs h-32 object-cover rounded-lg border border-red-200 shadow-sm"
+                            />
+                          </div>
+                        </Show>
+                      </div>
+                    </Show>
 
                     <div class="p-6 bg-gray-50/50">
                       <div class="flex items-center gap-2 text-sm mb-6 bg-white p-3 rounded-xl border border-gray-100">
@@ -468,7 +503,7 @@ export default function CustomerPortal() {
                   <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
                     <div class="flex items-start justify-between mb-4 pb-4 border-b border-gray-100">
                       <div>
-                        <h3 class="text-lg font-bold text-gray-900">{order.id}</h3>
+                        <h3 class="text-lg font-bold text-gray-900">{order.orderNumber}</h3>
                         <p class="text-sm text-gray-500 mt-1">{new Date(order.createdAt).toLocaleDateString('th-TH')}</p>
                       </div>
                       <span class="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">เสร็จสิ้น</span>

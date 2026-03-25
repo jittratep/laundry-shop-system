@@ -80,6 +80,24 @@ async function main() {
   console.log(`🛍️ ลูกค้า: ${customer.phone} | Pass: 123456`);
   
 
+  // ------------------------------------------------------
+  // 5. สร้างเครื่องซักผ้า/อบผ้า (Machines) สำหรับทดสอบคิวงาน
+  // ------------------------------------------------------
+  const machineData = [
+    { machineCode: "MCH-01", name: "เครื่องซักผ้า 1", type: "washer", status: "available" },
+    { machineCode: "MCH-02", name: "เครื่องซักผ้า 2", type: "washer", status: "available" },
+    { machineCode: "MCH-03", name: "เครื่องอบผ้า 1", type: "dryer", status: "available" },
+  ];
+
+  console.log("🧺 กำลังสร้างข้อมูลเครื่องซักผ้า...");
+  for (const m of machineData) {
+    await prisma.machine.upsert({
+      where: { machineCode: m.machineCode },
+      update: {}, // ถ้ามีอยู่แล้วก็ไม่ต้องทำอะไร
+      create: m,
+    });
+  }
+  
 }
 
 main()

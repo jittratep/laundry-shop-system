@@ -45,16 +45,29 @@ model Order {
   id                  String      @id @default(uuid())
   orderNumber         String      @unique 
   customerId          String
+  
+  // 🟢 FR-4.2 สถานะงาน: pending, washing, drying, folding, ready, completed
   status              String      @default("pending") 
+  
+  // 🟢 FR-4.1 ความเร่งด่วน: normal, urgent, express
+  urgency             String      @default("normal")
+  
+  // 🟢 FR-4.4 ระบุเครื่องซักที่ใช้
+  assignedMachineId   String?     
+  
+  // 🟢 FR-4.3 บันทึกปัญหา/ความเสียหาย
+  issueDescription    String?
+  issueImageUrl       String?     // เก็บ URL หรือชื่อไฟล์รูปภาพ
+  issueReportedAt     DateTime?
+
   totalAmount         Float
   notes               String?
-  
-  // 🟢 สิ่งที่เพิ่มเข้ามา: สถานะและช่องทางการชำระเงิน
   paymentStatus       String      @default("unpaid")
   paymentMethod       String?
   
   customer            Customer    @relation(fields: [customerId], references: [id])
   payment             Payment?
+  machine             Machine?    @relation(fields: [assignedMachineId], references: [id]) // ความสัมพันธ์กับเครื่องซักผ้า
   
   items               OrderItem[] 
   estimatedCompletion DateTime?   
@@ -91,6 +104,22 @@ model OrderItem {
   service      String  // บริการ เช่น ซักพับ, ซักรีด
   quantity     Int     // จำนวน
   pricePerItem Float   // ราคาต่อชิ้น
+}
+
+// ------------------------------------------------------
+// 6. ตารางเครื่องซักผ้า/อบผ้า (Machine)  <-- 🟢 [เพิ่มใหม่]
+// ------------------------------------------------------
+model Machine {
+  id                  String      @id @default(uuid())
+  machineCode         String      @unique // เช่น MCH-01
+  name                String      // เช่น เครื่องซักผ้า 1
+  type                String      // washer หรือ dryer
+  status              String      @default("available") // available, in-use, maintenance
+  
+  orders              Order[]     // ประวัติการใช้งานเครื่องนี้
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }
 
 // 🟡 [เพื่อนๆ] ถ้าจะเพิ่มตารางใหม่ (Table) เช่น Order, LaundryItem 

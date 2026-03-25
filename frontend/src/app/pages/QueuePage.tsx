@@ -1,74 +1,50 @@
 // frontend/src/app/pages/QueuePage.tsx
-import { createSignal, For, Show } from "solid-js";
+import { createSignal, For, Show, onMount } from "solid-js";
+import { api } from "../utils/api";
+
+const BASE_URL = "http://localhost:3000"; // เอาไว้ต่อ URL รูปภาพ
 
 // --- Types ---
 type OrderStatus = 'pending' | 'in-progress' | 'washing' | 'drying' | 'folding' | 'ready' | 'completed';
 type Urgency = 'normal' | 'urgent' | 'express';
 
-interface OrderItem {
-  id: string;
-  quantity: number;
-  type: string;
-  service: string;
-}
-
-interface Order {
-  id: string;
-  customerName: string;
-  status: OrderStatus;
-  urgency: Urgency;
-  estimatedCompletion: string;
-  assignedStaff?: string;
-  assignedMachine?: string;
-  items: OrderItem[];
-  issueReported?: { description: string; reportedAt: string };
-  updatedAt?: string;
-}
-
 export default function QueuePage() {
-  // --- Mock Data ---
-  const initialOrders: Order[] = [
-    {
-      id: "ORD001", customerName: "คุณสมหญิง รักสะอาด", status: "pending", urgency: "express",
-      estimatedCompletion: new Date(Date.now() + 3600000).toISOString(),
-      items: [{ id: "1", quantity: 3, type: "เสื้อเชิ้ต", service: "ซักรีด" }]
-    },
-    {
-      id: "ORD002", customerName: "คุณมานะ อดทน", status: "washing", urgency: "normal",
-      estimatedCompletion: new Date(Date.now() + 7200000).toISOString(), assignedMachine: "MCH-01", assignedStaff: "Jane Staff",
-      items: [{ id: "2", quantity: 5, type: "กางเกงยีนส์", service: "ซักพับ" }]
-    },
-    {
-      id: "ORD003", customerName: "คุณชูใจ ดีเสมอ", status: "ready", urgency: "urgent",
-      estimatedCompletion: new Date(Date.now() - 3600000).toISOString(), // Overdue
-      items: [{ id: "3", quantity: 1, type: "ชุดสูท", service: "ซักแห้ง" }]
-    }
-  ];
-
-  const machines = [
-    { id: "MCH-01", name: "เครื่องซักผ้า 1", status: "in-use" },
-    { id: "MCH-02", name: "เครื่องซักผ้า 2", status: "available" },
-    { id: "MCH-03", name: "เครื่องอบผ้า 1", status: "maintenance" },
-  ];
-
-  // --- State ---
-  const [orders, setOrders] = createSignal<Order[]>(initialOrders);
-  const [selectedOrder, setSelectedOrder] = createSignal<Order | null>(null);
+  const [orders, setOrders] = createSignal<any[]>([]);
+  const [machines, setMachines] = createSignal<any[]>([]);
+  const [isLoading, setIsLoading] = createSignal(true);
   
-  // Modal & Form State
+  const [selectedOrder, setSelectedOrder] = createSignal<any>(null);
   const [isModalOpen, setIsModalOpen] = createSignal(false);
   const [activeTab, setActiveTab] = createSignal("status");
   const [newStatus, setNewStatus] = createSignal<OrderStatus>("pending");
   const [assignedMachine, setAssignedMachine] = createSignal("");
   const [issueDescription, setIssueDescription] = createSignal("");
-
-  // 🟢 [เพิ่มใหม่ 1] State สำหรับเก็บชื่อไฟล์รูปภาพที่อัปโหลด
-  const [issueImage, setIssueImage] = createSignal<string | null>(null);
   
-  // Toast State
+  // 🟢 1. เปลี่ยนจากเก็บแค่ชื่อ เป็นเก็บ "ไฟล์ของจริง (File Object)"
+  const [issueImage, setIssueImage] = createSignal<File | null>(null); 
+  
   const [toastMessage, setToastMessage] = createSignal({ text: "", type: "success" });
 
-  // --- Derived Data (คำนวณแยกกลุ่มออเดอร์) ---
+  onMount(() => {
+    loadData();
+  });
+
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const [ordersRes, machinesRes] = await Promise.all([
+        api.getQueueOrders(),
+        api.getMachines()
+      ]);
+      setOrders(ordersRes.data);
+      setMachines(machinesRes.data);
+    } catch (error: any) {
+      showToast(error.message, "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const groupedOrders = () => ({
     pending: orders().filter(o => o.status === 'pending'),
     inProgress: orders().filter(o => ['in-progress', 'washing', 'drying', 'folding'].includes(o.status)),
@@ -78,54 +54,71 @@ export default function QueuePage() {
 
   const urgentOrders = () => orders().filter(o => o.urgency === 'urgent' || o.urgency === 'express');
 
-  // --- Functions ---
   const showToast = (text: string, type: "success" | "error" = "success") => {
     setToastMessage({ text, type });
     setTimeout(() => setToastMessage({ text: "", type: "success" }), 3000);
   };
 
-  const openUpdateModal = (order: Order) => {
+  const openUpdateModal = (order: any) => {
     setSelectedOrder(order);
     setNewStatus(order.status);
-    setAssignedMachine(order.assignedMachine || "");
+    setAssignedMachine(order.assignedMachineId || "");
     setActiveTab("status");
     setIsModalOpen(true);
   };
 
-  const handleUpdateStatus = () => {
+ // 🟢 อัปเดตสถานะโดยแพ็คข้อมูลใส่ FormData (เพื่อให้ Backend อ่านเข้าใจ)
+  const handleUpdateStatus = async () => {
     const currentOrder = selectedOrder();
     if (!currentOrder) return;
 
-    setOrders(orders().map(order => 
-      order.id === currentOrder.id 
-        ? { ...order, status: newStatus(), updatedAt: new Date().toISOString(), assignedMachine: assignedMachine() }
-        : order
-    ));
+    try {
+      const formData = new FormData();
+      formData.append("status", newStatus()); // ส่งสถานะใหม่
+      
+      if (assignedMachine()) {
+        formData.append("assignedMachineId", assignedMachine()); // ส่งรหัสเครื่องซัก
+      }
 
-    showToast(`อัปเดตสถานะออเดอร์ ${currentOrder.id} เป็น ${newStatus()} แล้ว`);
-    setIsModalOpen(false);
+      await api.updateQueueStatus(currentOrder.id, formData);
+      showToast(`อัปเดตสถานะออเดอร์ ${currentOrder.orderNumber} แล้ว`);
+      setIsModalOpen(false);
+      loadData(); 
+    } catch (error: any) {
+      showToast(error.message, "error");
+    }
   };
 
-  const handleReportIssue = () => {
+  // 🟢 2. แพ็คข้อมูลใส่กล่อง FormData
+  const handleReportIssue = async () => {
     const currentOrder = selectedOrder();
     if (!currentOrder || !issueDescription()) {
       showToast('กรุณาระบุรายละเอียดปัญหา', 'error');
       return;
     }
 
-    setOrders(orders().map(order => 
-      order.id === currentOrder.id 
-        ? { ...order, issueReported: { description: issueDescription(), reportedAt: new Date().toISOString() } }
-        : order
-    ));
+    try {
+      // สร้างกล่องพัสดุ (FormData)
+      const formData = new FormData();
+      formData.append("status", currentOrder.status); // ส่งสถานะเดิมกลับไป
+      formData.append("issueDescription", issueDescription());
+      
+      // ถ้ามีไฟล์รูปภาพ ให้ยัดใส่กล่องไปด้วย!
+      if (issueImage()) {
+        formData.append("issueImage", issueImage() as File);
+      }
 
-    showToast('รายงานปัญหาสำเร็จ');
-    setIssueDescription('');
-    setIssueImage(null); // 🟢 [เพิ่มใหม่ 2] เคลียร์รูปภาพหลังจากกดรายงาน
-    setIsModalOpen(false);
+      await api.updateQueueStatus(currentOrder.id, formData);
+      showToast('รายงานปัญหาพร้อมรูปภาพสำเร็จ');
+      setIssueDescription('');
+      setIssueImage(null);
+      setIsModalOpen(false);
+      loadData(); 
+    } catch (error: any) {
+      showToast(error.message, "error");
+    }
   };
 
-  // --- Helpers (สีของป้ายกำกับ) ---
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-gray-100 text-gray-800';
@@ -147,16 +140,15 @@ export default function QueuePage() {
     }
   };
 
-  // --- Components ภายใน (Card) ---
-  const OrderCard = (props: { order: Order }) => {
+  const OrderCard = (props: { order: any }) => {
     const isOverdue = new Date(props.order.estimatedCompletion) < new Date() && props.order.status !== 'completed';
 
     return (
       <div class={`bg-white rounded-xl border p-4 shadow-sm hover:shadow-md transition-shadow ${isOverdue ? 'border-red-300' : 'border-gray-200'}`}>
         <div class="flex justify-between items-start mb-3">
           <div>
-            <h3 class="font-bold text-gray-900">{props.order.id}</h3>
-            <p class="text-sm text-gray-500">{props.order.customerName}</p>
+            <h3 class="font-bold text-gray-900 text-sm">{props.order.orderNumber}</h3>
+            <p class="text-xs text-gray-500 font-semibold">{props.order.customer.name}</p>
           </div>
           <div class="flex gap-2 flex-col items-end">
             <span class={`px-2 py-1 rounded-md text-xs font-bold capitalize ${getStatusBadgeClass(props.order.status)}`}>
@@ -169,37 +161,44 @@ export default function QueuePage() {
         </div>
 
         <div class="space-y-2 text-sm mb-4">
-          <div class="flex items-center gap-2 text-gray-600">
+          <div class="flex items-center gap-2 text-xs text-gray-600 font-semibold">
             <span>🕒 Due: {new Date(props.order.estimatedCompletion).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}</span>
           </div>
-          <Show when={props.order.assignedStaff}>
-            <div class="flex items-center gap-2 text-gray-600">
-              <span>👤 {props.order.assignedStaff}</span>
-            </div>
-          </Show>
-          <Show when={props.order.assignedMachine}>
-            <span class="inline-block bg-gray-100 border border-gray-200 rounded px-2 py-0.5 text-xs text-gray-600">
-              {props.order.assignedMachine}
+          <Show when={props.order.machine}>
+            <span class="inline-block bg-blue-50 border border-blue-200 rounded px-2 py-1 text-xs text-blue-700 font-bold">
+              🖥️ {props.order.machine?.name}
             </span>
           </Show>
         </div>
 
         <div class="border-t border-gray-100 pt-3 mb-4">
           <p class="text-xs font-bold text-gray-500 mb-2">รายการ (Items):</p>
-          <ul class="text-sm text-gray-700 space-y-1">
+          <ul class="text-xs text-gray-700 space-y-1">
             <For each={props.order.items}>
-              {(item) => <li>• {item.quantity}x {item.type} ({item.service})</li>}
+              {(item: any) => <li>• {item.quantity}x {item.type} ({item.service})</li>}
             </For>
           </ul>
         </div>
 
-        <Show when={props.order.issueReported}>
-          <div class="bg-red-50 p-2 rounded-lg flex items-start gap-2 mb-3 border border-red-100">
-            <span class="text-red-500 mt-0.5">⚠️</span>
-            <div class="text-xs">
-              <p class="font-bold text-red-900">แจ้งปัญหา</p>
-              <p class="text-red-700">{props.order.issueReported?.description}</p>
+        <Show when={props.order.issueDescription}>
+          <div class="bg-red-50 p-3 rounded-lg flex flex-col items-start gap-2 mb-3 border border-red-100">
+            <div class="flex items-start gap-2">
+              <span class="text-red-500 mt-0.5">⚠️</span>
+              <div class="text-xs">
+                <p class="font-bold text-red-900">แจ้งปัญหา</p>
+                <p class="text-red-700">{props.order.issueDescription}</p>
+              </div>
             </div>
+            {/* 🟢 3. ดึงรูปภาพของจริงจากเซิร์ฟเวอร์มาแสดง! */}
+            <Show when={props.order.issueImageUrl}>
+              <div class="mt-2 w-full">
+                <img 
+                  src={`${BASE_URL}${props.order.issueImageUrl}`} 
+                  alt="Issue Upload" 
+                  class="w-full max-h-32 object-cover rounded-lg border border-red-200 shadow-sm"
+                />
+              </div>
+            </Show>
           </div>
         </Show>
 
@@ -222,102 +221,103 @@ export default function QueuePage() {
 
   return (
     <div class="p-6 max-w-7xl mx-auto relative">
-      <div class="mb-6">
-        <h1 class="text-3xl font-bold text-gray-900 mb-1">คิวงาน และ ระบบปฏิบัติการ</h1>
-        <p class="text-gray-500">Queue Management & Operations</p>
+      <div class="flex justify-between items-end mb-6">
+        <div>
+          <h1 class="text-3xl font-bold text-gray-900 mb-1">คิวงาน และ ระบบปฏิบัติการ</h1>
+          <p class="text-gray-500">Queue Management & Operations</p>
+        </div>
+        <button onClick={loadData} class="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50 flex items-center gap-2 shadow-sm">
+          ↻ โหลดใหม่
+        </button>
       </div>
 
-      {/* แจ้งเตือนงานด่วน */}
-      <Show when={urgentOrders().length > 0}>
-        <div class="bg-orange-50 border border-orange-200 rounded-2xl p-6 mb-8 shadow-sm">
-          <h2 class="flex items-center gap-2 text-orange-900 font-bold text-lg mb-4">
-            ⚠️ งานด่วน (Urgent Orders) - {urgentOrders().length} รายการ
-          </h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <For each={urgentOrders()}>{(order) => <OrderCard order={order} />}</For>
+      <Show when={isLoading()}>
+        <div class="text-center py-12 text-gray-500 animate-pulse font-semibold">กำลังโหลดข้อมูลคิวงาน...</div>
+      </Show>
+
+      <Show when={!isLoading()}>
+        <Show when={urgentOrders().length > 0}>
+          <div class="bg-orange-50 border border-orange-200 rounded-2xl p-6 mb-8 shadow-sm">
+            <h2 class="flex items-center gap-2 text-orange-900 font-bold text-lg mb-4">
+              ⚠️ งานด่วน (Urgent Orders) - {urgentOrders().length} รายการ
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <For each={urgentOrders()}>{(order) => <OrderCard order={order} />}</For>
+            </div>
+          </div>
+        </Show>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+          <div class="bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
+            <h2 class="font-bold text-lg mb-4 flex items-center justify-between text-gray-700">
+              รอดำเนินการ <span class="bg-white px-2 py-0.5 rounded text-sm border">{groupedOrders().pending.length}</span>
+            </h2>
+            <div class="space-y-4">
+              <For each={groupedOrders().pending}>{(order) => <OrderCard order={order} />}</For>
+            </div>
+          </div>
+
+          <div class="bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
+            <h2 class="font-bold text-lg mb-4 flex items-center justify-between text-blue-900">
+              กำลังดำเนินการ <span class="bg-white px-2 py-0.5 rounded text-sm border">{groupedOrders().inProgress.length}</span>
+            </h2>
+            <div class="space-y-4">
+              <For each={groupedOrders().inProgress}>{(order) => <OrderCard order={order} />}</For>
+            </div>
+          </div>
+
+          <div class="bg-green-50/50 p-4 rounded-2xl border border-green-100">
+            <h2 class="font-bold text-lg mb-4 flex items-center justify-between text-green-900">
+              พร้อมรับ <span class="bg-white px-2 py-0.5 rounded text-sm border">{groupedOrders().ready.length}</span>
+            </h2>
+            <div class="space-y-4">
+              <For each={groupedOrders().ready}>{(order) => <OrderCard order={order} />}</For>
+            </div>
+          </div>
+
+          <div class="bg-gray-100/50 p-4 rounded-2xl border border-gray-200">
+            <h2 class="font-bold text-lg mb-4 flex items-center justify-between text-gray-800">
+              เสร็จสิ้น <span class="bg-white px-2 py-0.5 rounded text-sm border">{groupedOrders().completed.length}</span>
+            </h2>
+            <div class="space-y-4">
+              <For each={groupedOrders().completed}>{(order) => <OrderCard order={order} />}</For>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+          <h2 class="text-lg font-bold text-gray-900 mb-4">สถานะเครื่องจักร (Machine Status)</h2>
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <For each={machines()}>
+              {(machine) => (
+                <div class="p-4 border rounded-xl bg-gray-50 text-center">
+                  <p class="font-bold text-sm text-gray-800 mb-2">{machine.name}</p>
+                  <span class={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
+                    machine.status === 'available' ? 'bg-green-100 text-green-800' :
+                    machine.status === 'in-use' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                    {machine.status}
+                  </span>
+                </div>
+              )}
+            </For>
           </div>
         </div>
       </Show>
 
-      {/* กระดาน Kanban 4 คอลัมน์ */}
-      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-        
-        {/* คอลัมน์ 1 */}
-        <div class="bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
-          <h2 class="font-bold text-lg mb-4 flex items-center justify-between text-gray-700">
-            รอดำเนินการ <span class="bg-white px-2 py-0.5 rounded text-sm border">{groupedOrders().pending.length}</span>
-          </h2>
-          <div class="space-y-4">
-            <For each={groupedOrders().pending}>{(order) => <OrderCard order={order} />}</For>
-          </div>
-        </div>
-
-        {/* คอลัมน์ 2 */}
-        <div class="bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
-          <h2 class="font-bold text-lg mb-4 flex items-center justify-between text-blue-900">
-            กำลังดำเนินการ <span class="bg-white px-2 py-0.5 rounded text-sm border">{groupedOrders().inProgress.length}</span>
-          </h2>
-          <div class="space-y-4">
-            <For each={groupedOrders().inProgress}>{(order) => <OrderCard order={order} />}</For>
-          </div>
-        </div>
-
-        {/* คอลัมน์ 3 */}
-        <div class="bg-green-50/50 p-4 rounded-2xl border border-green-100">
-          <h2 class="font-bold text-lg mb-4 flex items-center justify-between text-green-900">
-            พร้อมรับ <span class="bg-white px-2 py-0.5 rounded text-sm border">{groupedOrders().ready.length}</span>
-          </h2>
-          <div class="space-y-4">
-            <For each={groupedOrders().ready}>{(order) => <OrderCard order={order} />}</For>
-          </div>
-        </div>
-
-        {/* คอลัมน์ 4 */}
-        <div class="bg-gray-100/50 p-4 rounded-2xl border border-gray-200">
-          <h2 class="font-bold text-lg mb-4 flex items-center justify-between text-gray-800">
-            เสร็จสิ้น <span class="bg-white px-2 py-0.5 rounded text-sm border">{groupedOrders().completed.length}</span>
-          </h2>
-          <div class="space-y-4">
-            <For each={groupedOrders().completed}>{(order) => <OrderCard order={order} />}</For>
-          </div>
-        </div>
-
-      </div>
-
-      {/* สถานะเครื่องซักผ้า */}
-      <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-        <h2 class="text-lg font-bold text-gray-900 mb-4">สถานะเครื่องจักร (Machine Status)</h2>
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <For each={machines}>
-            {(machine) => (
-              <div class="p-4 border rounded-xl bg-gray-50 text-center">
-                <p class="font-bold text-sm text-gray-800 mb-2">{machine.name}</p>
-                <span class={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
-                  machine.status === 'available' ? 'bg-green-100 text-green-800' :
-                  machine.status === 'in-use' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
-                }`}>
-                  {machine.status}
-                </span>
-              </div>
-            )}
-          </For>
-        </div>
-      </div>
-
-      {/* --- Modal (Dialog) สำหรับอัปเดตสถานะ --- */}
+      {/* --- Modal (Dialog) --- */}
       <Show when={isModalOpen() && selectedOrder()}>
         <div class="fixed inset-0 bg-gray-900/50 z-50 flex items-center justify-center p-4">
-          <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+          <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl animate-fade-in">
             
             <div class="flex justify-between items-start mb-4">
               <div>
-                <h2 class="text-xl font-bold text-gray-900">อัปเดตออเดอร์ {selectedOrder()?.id}</h2>
+                <h2 class="text-xl font-bold text-gray-900">อัปเดตออเดอร์ {selectedOrder()?.orderNumber}</h2>
                 <p class="text-sm text-gray-500">เปลี่ยนสถานะ, กำหนดเครื่อง, หรือแจ้งปัญหา</p>
               </div>
               <button onClick={() => setIsModalOpen(false)} class="text-gray-400 hover:text-gray-600 font-bold">✕</button>
             </div>
 
-            {/* Custom Tabs ใน Modal */}
             <div class="flex border bg-gray-100 p-1 rounded-lg mb-6">
               <button onClick={() => setActiveTab("status")} class={`flex-1 py-2 text-sm font-semibold rounded-md ${activeTab() === "status" ? "bg-white shadow text-gray-900" : "text-gray-500"}`}>อัปเดตสถานะ</button>
               <button onClick={() => setActiveTab("issue")} class={`flex-1 py-2 text-sm font-semibold rounded-md ${activeTab() === "issue" ? "bg-white shadow text-gray-900" : "text-gray-500"}`}>แจ้งปัญหา</button>
@@ -342,8 +342,8 @@ export default function QueuePage() {
                   <label class="block text-sm font-bold text-gray-700 mb-2">ระบุเครื่องซัก (Assign Machine)</label>
                   <select value={assignedMachine()} onChange={(e) => setAssignedMachine(e.currentTarget.value)} class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                     <option value="">-- ไม่ระบุ --</option>
-                    <For each={machines}>
-                      {(m) => <option value={m.id} disabled={m.status === 'maintenance'}>{m.name} - {m.status}</option>}
+                    <For each={machines()}>
+                      {(m: any) => <option value={m.id} disabled={m.status === 'maintenance'}>{m.name} - {m.status}</option>}
                     </For>
                   </select>
                 </div>
@@ -361,26 +361,25 @@ export default function QueuePage() {
                   <textarea rows="4" placeholder="อธิบายปัญหาที่พบ..." value={issueDescription()} onInput={(e) => setIssueDescription(e.currentTarget.value)} class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-red-500 outline-none"></textarea>
                 </div>
 
-                {/* 🟢 [เพิ่มใหม่ 3] กล่องอัปโหลดรูปภาพ (UI เหมือนกรอบประในต้นฉบับ) */}
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">แนบรูปภาพ (Optional)</label>
-                  <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:bg-gray-50 transition-colors relative group">
-                    {/* Input File ซ่อนอยู่เต็มกล่อง พอกดตรงไหนของกล่องก็จะเปิดหน้าต่างเลือกไฟล์ */}
+                  <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:bg-gray-50 transition-colors relative group overflow-hidden">
                     <input 
                       type="file" 
                       accept="image/*" 
                       class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                       onChange={(e) => {
                         const file = e.currentTarget.files?.[0];
-                        if (file) setIssueImage(file.name);
+                        // 🟢 4. เก็บไฟล์ภาพก้อนเต็มๆ ลงใน State
+                        if (file) setIssueImage(file);
                       }}
                     />
-                    
                     <div class="pointer-events-none flex flex-col items-center justify-center">
                       <Show when={!issueImage()} fallback={
                         <div class="text-blue-600 font-semibold flex flex-col items-center gap-2">
-                          <span class="text-3xl">📸</span>
-                          <span>{issueImage()}</span>
+                          <span class="text-3xl">✅</span>
+                          {/* 🟢 5. โชว์ชื่อไฟล์ที่เลือก */}
+                          <span class="text-sm truncate max-w-[200px]">{issueImage()?.name}</span>
                           <span class="text-xs text-gray-400 font-normal">คลิกเพื่อเปลี่ยนรูปภาพ</span>
                         </div>
                       }>
@@ -396,7 +395,7 @@ export default function QueuePage() {
                 </div>
 
                 <button onClick={handleReportIssue} class="w-full bg-red-600 text-white font-bold py-3 rounded-lg hover:bg-red-700 transition-colors flex justify-center items-center gap-2 mt-4">
-                  ⚠️ รายงานปัญหา
+                  ⚠️ รายงานปัญหาพร้อมรูปภาพ
                 </button>
               </div>
             </Show>
@@ -405,7 +404,7 @@ export default function QueuePage() {
         </div>
       </Show>
 
-      {/* --- Toast Notification มุมขวาล่าง --- */}
+      {/* --- Toast Notification --- */}
       <Show when={toastMessage().text !== ""}>
         <div class={`fixed bottom-6 right-6 px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 animate-bounce z-50 text-white ${toastMessage().type === 'error' ? 'bg-red-500 shadow-red-200' : 'bg-green-600 shadow-green-200'}`}>
           <span class="font-bold">{toastMessage().text}</span>
