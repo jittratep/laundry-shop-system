@@ -12,10 +12,10 @@ RUN bun install
 COPY . .
 
 # 5. สั่งสร้าง Prisma Client เพื่อให้โค้ดคุยกับ DB ได้
-RUN bunx prisma generate && bunx prisma db push
+RUN bunx prisma generate
 
 # 6. เปิดพอร์ต 3001 ตามที่ตั้งค่าไว้
 EXPOSE 3001
 
 # 7. สั่งรันด้วยสคริปต์ start ที่เราเพิ่งแก้ใน package.json
-CMD ["bun", "run", "start"]
+CMD ["sh", "-c", "bunx prisma db push && bun run start"]
