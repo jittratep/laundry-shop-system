@@ -1,10 +1,10 @@
 // frontend/src/app/pages/CustomerPage.tsx
 import { createSignal, For, Show, onMount } from "solid-js";
-import { useNavigate } from "@solidjs/router";
+// import { useNavigate } from "@solidjs/router";
 import { api } from "../utils/api";
 
 export default function CustomerPage() {
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = createSignal("search");
   const [toastMessage, setToastMessage] = createSignal({ text: "", type: "success" });

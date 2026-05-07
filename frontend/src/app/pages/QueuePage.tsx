@@ -6,7 +6,7 @@ const BASE_URL = "http://localhost:3000"; // เอาไว้ต่อ URL ร
 
 // --- Types ---
 type OrderStatus = 'pending' | 'in-progress' | 'washing' | 'drying' | 'folding' | 'ready' | 'completed';
-type Urgency = 'normal' | 'urgent' | 'express';
+// type Urgency = 'normal' | 'urgent' | 'express';
 
 export default function QueuePage() {
   const [orders, setOrders] = createSignal<any[]>([]);
