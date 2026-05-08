@@ -18,6 +18,13 @@ const app = new Hono();
 app.use("*", cors());
 app.use("*", logger());
 
+app.get("/", (c) => {
+  return c.json({
+    message: "Laundry Shop API is Live! 🚀",
+    status: "ready"
+  });
+});
+
 // 🟢 2. เปิดให้เข้าถึงไฟล์รูปภาพ (เข้าผ่าน http://localhost:3000/uploads/...)
 app.use('/uploads/*', serveStatic({ root: './public' }));
 
@@ -44,7 +51,9 @@ api.route("/dashboard", dashboard);
 app.route("/", api);
 
 // --- SERVER CONFIG ---
-const port = 3000;
+// 1. ให้ลองอ่านค่าจาก Environment Variable ก่อน ถ้าไม่มี (เช่น รันในเครื่องตัวเอง) ค่อยใช้ 3001
+const port = parseInt(process.env.PORT || "3001"); 
+
 console.log(`🚀 Backend is running on port ${port}`);
 
 export default {
