@@ -268,3 +268,35 @@ bun run db:seed
 รันเพื่อเรียกหน้าเว็บสำหรับการจัดการฐานข้อมูลที่เป็น GUI ได้โดย
 ```bash
 npx prisma studio
+```
+
+---
+
+### 2.7 การติดตั้งและใช้งาน
+โปรเจกต์นี้แยกการทำงานออกเป็น 2 ส่วนหลัก (Decoupled Architecture) เพื่อประสิทธิภาพและความง่ายในการขยายระบบ
+
+**🎨 ส่วนหน้าบ้าน (Frontend)**
+- Platform: Vercel
+- Framework: SolidJS
+- Live URL: https://laundry-shop-system-frontend.vercel.app/
+
+**⚙️ ส่วนหลังบ้าน (Backend)**
+- Platform: Render (Web Service)
+- Runtime: Bun รันผ่านระบบ Docker
+- Containerization: ใช้ Dockerfile ในการจัดการสภาพแวดล้อม (Environment) เพื่อให้มั่นใจว่าระบบจะทำงานได้เสถียรและเหมือนกันทุกประการ ทั้งในเครื่องของนักพัฒนา (Development) และบนเซิร์ฟเวอร์จริง (Production)
+- Live URL: https://laundry-shop-system.onrender.com/
+
+**🗄️ ระบบฐานข้อมูล (Database)**
+- Provider: Neon.tech (Serverless PostgreSQL)
+- ORM: Prisma
+- Sync Method: ใช้คำสั่ง bunx prisma db push ในขั้นตอนการรัน Container (Runtime) เพื่อทำการอัปเดต Schema ของฐานข้อมูลให้เป็นปัจจุบันโดยอัตโนมัติ
+
+**🔄 ระบบ CI/CD (Continuous Deployment)**
+<br> ระบบมีการตั้งค่าท่อส่งงานอัตโนมัติเพื่อให้การอัปเดตโค้ดเป็นไปอย่างราบรื่น </br>
+อัตโนมัติ: ระบบจะทำการบิลด์ (Build) และติดตั้ง (Deploy) ใหม่ทันทีเมื่อมีการ push โค้ดไปยัง GitHub
+
+**Branch Specific**
+- Render: เฝ้าติดตาม Branch deploy-backend
+- Vercel: เฝ้าติดตาม Branch หลัก (Main)
+
+---
